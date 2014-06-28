@@ -40,15 +40,14 @@ type Group = (Int, Int, Int)
 
 
 data Tomato = Tomato
-  { _groups  :: [Group]
+  { _group      :: Group
   , _iterations :: Int
   , _session    :: Session
   } deriving (Show, Eq)
 
 
 data Session = Session
-  { _group     :: Int
-  , _iteration :: Int
+  { _iteration :: Int
   , _interval  :: Interval
   , _timer     :: Timer
   } deriving (Show, Eq)
@@ -67,23 +66,14 @@ type SessionM = StateT Session IO
 
 tomatoDef :: Tomato
 tomatoDef = Tomato
-  { _groups = groupsDef
+  { _group = (25, 5, 15)
   , _iterations = 4
-  , _session = mkSession 0 }
+  , _session = mkSession }
 
 
-groupsDef :: [Group]
-groupsDef =
-  [ (25,5,15)
-  , (25,3,15)
-  , (25,5,30)
-  , (25,3,30) ]
-
-
-mkSession :: Int -> Session
-mkSession s = Session
-    { _group = s
-    , _iteration = 0
+mkSession :: Session
+mkSession = Session
+    { _iteration = 0
     , _interval = Pomodoro
     , _timer = NotStarted }
 
@@ -147,12 +137,11 @@ stepTomato tom =
 
 
 tomatoTimeLimit :: Num a => Tomato -> a
-tomatoTimeLimit tom = 
-  let grp = (tom^.groups) !! (tom^.session^.group)
-  in  fromIntegral $ case (tom^.session^.interval) of
-        Pomodoro   -> grp^._1
-        ShortBreak -> grp^._2
-        LongBreak  -> grp^._3
+tomatoTimeLimit tom =  fromIntegral $ 
+  tom^.group^.(case (tom^.session^.interval) of
+    Pomodoro   -> _1
+    ShortBreak -> _2
+    LongBreak  -> _3)
 
 
 nudgeTomatoTimer :: Tomato -> IO Tomato
@@ -187,14 +176,6 @@ limitIterationForTomato tom iter
   | tom^.iterations < iter = tom^.iterations
   | iter < 0               = 0
   | otherwise              = iter
-
-
-limitGroupForSession :: Tomato -> Int -> Int
-limitGroupForSession  tom g =
-  let len = length (tom^.groups)
-  in if | g <= 0    -> 0
-        | g >= len  -> len - 1
-        | otherwise -> g
 
 
 --
