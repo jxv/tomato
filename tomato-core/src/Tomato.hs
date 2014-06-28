@@ -121,19 +121,28 @@ sessionNudgeTimer iter_limit =
                                    timer .= NotStarted
         | iter == iter_limit -> do interval .= LongBreak
                                    timer .= NotStarted
-        | otherwise          -> sessionNudgeTimerNow
+        | otherwise          -> sessionNudgeTimerNow iter_limit
 
 
-sessionNudgeTimerNow :: SessionM ()
-sessionNudgeTimerNow =
+sessionNudgeTimerNow :: Int -> SessionM ()
+sessionNudgeTimerNow iter_limit =
   do t <- use timer
      time <- io getCurrentTime
      case t of
        NotStarted  -> timer .= Running 0 time
        Paused{..}  -> timer .= Running pausedSeconds time
        Running{..} -> timer .= Paused runningSeconds
-       Finished    -> do iteration %= (+1)
-                         timer .= NotStarted
+       Finished    -> do int <- use interval
+                         case int of
+                           Pomodoro   -> do iteration %= (+1)
+                                            iter <- use iteration
+                                            interval .= if iter < iter_limit
+                                                           then ShortBreak
+                                                           else LongBreak
+                                            timer .= NotStarted
+                           ShortBreak -> do interval .= Pomodoro
+                                            timer .= NotStarted
+                           LongBreak  -> return ()
 
 
 stepSession :: Session -> Double -> IO Session
@@ -162,14 +171,14 @@ nudgeTomatoTimer tom =
 
 
 nudger :: Tomato -> Nudger
-nudger tom
-  | (tom^.iterations) < (tom^.session^.iteration) = Restart
-  | otherwise = case (tom^.session^.timer) of
-      NotStarted -> Start
-      Running{}  -> Pause
-      Paused{}   -> Resume
-      Finished   -> Next
-
+nudger tom =
+  case (tom^.session^.timer) of
+    NotStarted -> Start
+    Running{}  -> Pause
+    Paused{}   -> Resume
+    Finished   -> if tom^.session^.interval == LongBreak
+                     then Restart
+                     else Next
 
 
 io :: MonadIO m => IO a -> m a
