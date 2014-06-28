@@ -137,13 +137,18 @@ sessionNudgeTimer iter_limit =
 
 stepTomato :: Tomato -> IO Tomato
 stepTomato tom =
-  do let grp = (tom^.groups) !! (tom^.session^.group)
-         time_limit = fromIntegral $ case (tom^.session^.interval) of
-                        Pomodoro   -> grp^._1
-                        ShortBreak -> grp^._2
-                        LongBreak  -> grp^._3
+  do let time_limit = tomatoTimeLimit tom
      sess <- execStateT (sessionStep (time_limit * 60)) (tom^.session)
      return (set session sess tom)
+
+
+tomatoTimeLimit :: Num a => Tomato -> a
+tomatoTimeLimit tom = 
+  let grp = (tom^.groups) !! (tom^.session^.group)
+  in  fromIntegral $ case (tom^.session^.interval) of
+        Pomodoro   -> grp^._1
+        ShortBreak -> grp^._2
+        LongBreak  -> grp^._3
 
 
 nudgeTomatoTimer :: Tomato -> IO Tomato
@@ -160,6 +165,16 @@ nudger tom = case (tom^.session^.timer) of
   Finished   -> if tom^.session^.interval == LongBreak
                    then Restart
                    else Next
+
+
+adjustTomatoTimerByMinutes :: Tomato -> Double -> Tomato
+adjustTomatoTimerByMinutes tom minutes =
+  let time_limit = tomatoTimeLimit tom
+      secs  | minutes < 0          = 0
+            | minutes > time_limit = time_limit * 60
+            | otherwise            = minutes * 60 
+      sess = set timer (Paused secs) (tom^.session)
+  in set session sess tom
 
 
 io :: MonadIO m => IO a -> m a
