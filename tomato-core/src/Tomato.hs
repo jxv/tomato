@@ -130,7 +130,11 @@ sessionNudgeTimer iter_limit =
                                             interval .= if iter < iter_limit
                                                            then ShortBreak
                                                            else LongBreak
-                           ShortBreak -> interval .= Pomodoro
+                           ShortBreak -> do iter <- use iteration
+                                            iteration .= if iter < iter_limit
+                                                            then iter
+                                                            else 0
+                                            interval .= Pomodoro
                            LongBreak  -> do iteration .= 0
                                             interval .= Pomodoro
 
@@ -167,14 +171,33 @@ nudger tom = case (tom^.session^.timer) of
                    else Next
 
 
-adjustTomatoTimerByMinutes :: Tomato -> Double -> Tomato
-adjustTomatoTimerByMinutes tom minutes =
+-- Auxiliary functions for adjusting data from outside tomato-core.
+
+
+limitSecondsForTimerByMinutes :: Tomato -> Double -> Double
+limitSecondsForTimerByMinutes tom minutes =
   let time_limit = tomatoTimeLimit tom
-      secs  | minutes < 0          = 0
-            | minutes > time_limit = time_limit * 60
-            | otherwise            = minutes * 60 
-      sess = set timer (Paused secs) (tom^.session)
-  in set session sess tom
+  in if | minutes < 0          -> 0
+        | minutes > time_limit -> time_limit * 60
+        | otherwise            -> minutes * 60 
+
+
+limitIterationForTomato :: Tomato -> Int -> Int
+limitIterationForTomato tom iter
+  | tom^.iterations < iter = tom^.iterations
+  | iter < 0               = 0
+  | otherwise              = iter
+
+
+limitGroupForSession :: Tomato -> Int -> Int
+limitGroupForSession  tom g =
+  let len = length (tom^.groups)
+  in if | g <= 0    -> 0
+        | g >= len  -> len - 1
+        | otherwise -> g
+
+
+--
 
 
 io :: MonadIO m => IO a -> m a
