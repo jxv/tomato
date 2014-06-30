@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiWayIf #-}
 
-module Tomato where
+module Tomato.Core where
 
 import Control.Monad.State
 import Data.Time.Clock
@@ -35,13 +35,12 @@ data Timer
   deriving (Show, Eq)
 
 
--- | Time's for (Pomodoro, Short break, Long break)
-type Group = (Int, Int, Int)
-
-
 data Tomato = Tomato
-  { _group      :: Group
+  { _pomodoro   :: Int
+  , _shortBreak :: Int
+  , _longBreak  :: Int
   , _iterations :: Int
+  , _completed  :: Int
   , _session    :: Session
   } deriving (Show, Eq)
 
@@ -66,8 +65,11 @@ type SessionM = StateT Session IO
 
 tomatoDef :: Tomato
 tomatoDef = Tomato
-  { _group = (25, 5, 15)
+  { _pomodoro = 25
+  , _shortBreak = 5
+  , _longBreak = 15
   , _iterations = 4
+  , _completed = 0
   , _session = mkSession }
 
 
@@ -89,19 +91,22 @@ getDiffSeconds start end =
   secs_per_day = 24 * 60 * 60
 
 
-sessionStep :: Double -> SessionM ()
+sessionStep :: Double -> SessionM Bool
 sessionStep time_limit =
   do t <- use timer
      case t of
-       NotStarted  -> return ()
-       Finished    -> return ()
-       Paused{}    -> return ()
+       NotStarted  -> return False
+       Finished    -> return False
+       Paused{}    -> return False
        Running{..} -> do cur_time <- io getCurrentTime
                          diff <- io $ getDiffSeconds runningTime cur_time
                          let secs = runningSeconds + diff
                          timer .= if secs < time_limit
                                      then Running secs cur_time
                                      else Finished
+                         t <- use timer
+                         int <- use interval
+                         return (t == Finished && int == Pomodoro)
  
 
 sessionNudgeTimer :: Int -> SessionM ()
@@ -132,16 +137,16 @@ sessionNudgeTimer iter_limit =
 stepTomato :: Tomato -> IO Tomato
 stepTomato tom =
   do let time_limit = tomatoTimeLimit tom
-     sess <- execStateT (sessionStep (time_limit * 60)) (tom^.session)
-     return (set session sess tom)
+     (finished, sess) <- runStateT (sessionStep (time_limit * 60)) (tom^.session)
+     return $ (set session sess) (over completed (if finished then (+1) else id) tom)
 
 
 tomatoTimeLimit :: Num a => Tomato -> a
 tomatoTimeLimit tom =  fromIntegral $ 
-  tom^.group^.(case (tom^.session^.interval) of
-    Pomodoro   -> _1
-    ShortBreak -> _2
-    LongBreak  -> _3)
+  tom^.(case (tom^.session^.interval) of
+    Pomodoro   -> pomodoro
+    ShortBreak -> shortBreak
+    LongBreak  -> longBreak)
 
 
 nudgeTomatoTimer :: Tomato -> IO Tomato
@@ -158,6 +163,14 @@ nudger tom = case (tom^.session^.timer) of
   Finished   -> if tom^.session^.interval == LongBreak
                    then Restart
                    else Next
+
+
+tomatoSeconds :: Tomato -> Double
+tomatoSeconds tom =  case (tom^.session^.timer) of
+  NotStarted  -> 0
+  Paused s    -> s
+  Running s _ -> s
+  Finished    -> tomatoTimeLimit tom
 
 
 -- Auxiliary functions for adjusting data from outside tomato-core.
