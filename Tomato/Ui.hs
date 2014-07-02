@@ -48,11 +48,18 @@ data Ui = Ui
 
 
 data Frp = Frp
-  { _frpTimerNudgeEvent :: Event (Tomato -> IO Tomato)
-  , _frpTimerNudgeCb :: Reactive ()
-  , _frpTimerMinutesEvent :: Event (Tomato -> IO Tomato)
-  , _frpTimerMinutesCb :: Reactive () }
- 
+  { _frpTimerNudgeEvent         :: Event (Tomato -> IO Tomato)
+  , _frpTimerNudgeCb            :: Reactive ()
+  , _frpTimerMinutesEvent       :: Event (Tomato -> IO Tomato)
+  , _frpTimerMinutesCb          :: Double -> Reactive ()
+  , _frpSettingsPomodoroEvent   :: Event (Tomato -> IO Tomato)
+  , _frpSettingsPomodoroCb      :: Double -> Reactive ()
+  , _frpSettingsShortBreakEvent :: Event (Tomato -> IO Tomato)
+  , _frpSettingsShortBreakCb    :: Double -> Reactive ()
+  , _frpSettingsLongBreakEvent  :: Event (Tomato -> IO Tomato)
+  , _frpSettingsLongBreakCb     :: Double -> Reactive ()
+  , _frpSettingsIterationsEvent :: Event (Tomato -> IO Tomato)
+  , _frpSettingsIterationsCb    :: Double -> Reactive () }
 
 
 makeLenses ''UiTimer
@@ -113,13 +120,25 @@ buildUi builder = Ui
 
 initFrp :: IO Frp
 initFrp =
-  do (timer_nudge_event, timer_nudge_cb) <- sync newEvent
-     (timer_minutes_event, timer_minutes_cb) <- sync newEvent
+  do (timer_nudge_event, timer_nudge_cb)                   <- sync newEvent
+     (timer_minutes_event, timer_minutes_cb)               <- sync newEvent
+     (settings_pomodoro_event, settings_pomodoro_cb)       <- sync newEvent
+     (settings_short_break_event, settings_short_break_cb) <- sync newEvent
+     (settings_long_break_event, settings_long_break_cb)   <- sync newEvent
+     (settings_iterations_event, settings_iterations_cb)   <- sync newEvent
      return $ Frp
-       { _frpTimerNudgeEvent = timer_nudge_event
-       , _frpTimerNudgeCb = timer_nudge_cb nudgeTomatoTimer
-       , _frpTimerMinutesEvent = timer_minutes_event
-       , _frpTimerMinutesCb = timer_minutes_cb return }
+       { _frpTimerNudgeEvent         = timer_nudge_event
+       , _frpTimerNudgeCb            = timer_nudge_cb nudgeTomatoTimer
+       , _frpTimerMinutesEvent       = timer_minutes_event
+       , _frpTimerMinutesCb          = timer_minutes_cb . adjustTomatoTime
+       , _frpSettingsPomodoroEvent   = settings_pomodoro_event
+       , _frpSettingsPomodoroCb      = settings_pomodoro_cb . (adjustSettings pomodoro Pomodoro)
+       , _frpSettingsShortBreakEvent = settings_short_break_event
+       , _frpSettingsShortBreakCb    = settings_short_break_cb . (adjustSettings shortBreak ShortBreak)
+       , _frpSettingsLongBreakEvent  = settings_long_break_event
+       , _frpSettingsLongBreakCb     = settings_long_break_cb . (adjustSettings longBreak LongBreak)
+       , _frpSettingsIterationsEvent = settings_iterations_event
+       , _frpSettingsIterationsCb    = settings_iterations_cb . adjustSettingsIterations }
     
 
 --
@@ -169,27 +188,42 @@ main =
      builderAddFromFile builder "data/tomato.ui"
      ui <- buildUi builder
      --
-     mtom <- newMVar (set pomodoro 1 tomatoDef)
+     mtom <- newMVar tomatoDef
      tom <- readMVar mtom
      void $ G.on (ui^.uiWindow) objectDestroy mainQuit
      G.set (ui^.uiWindow) [ windowTitle := "Tomato", windowResizable := False ]
-     -- G.set (ui^.nudgeButton) [ buttonLabel := "Start" ]
      G.set (ui^.uiTimer^.uiTimerMinutesScale) [ scaleDigits := 0]
      --
      frp <- initFrp
+     let evts =
+           [ frp^.frpTimerMinutesEvent
+           , frp^.frpTimerNudgeEvent
+           , frp^.frpSettingsPomodoroEvent 
+           , frp^.frpSettingsShortBreakEvent 
+           , frp^.frpSettingsLongBreakEvent 
+           , frp^.frpSettingsIterationsEvent ]
+     killFRP <- sync $ listen (foldr1 merge evts) (modifyMVar_ mtom)
      --
-     let adj = ui^.uiTimer^.uiTimerMinutesAdjustment
-     void $ onValueChanged adj (do v <- G.get adj adjustmentValue
-                                   print v
-                                   sync (frp^.frpTimerMinutesCb))
+     void $ G.on (ui^.uiTimer^.uiTimerMinutesScale)
+                 changeValue
+                 (\_ v -> do sync $ (frp^.frpTimerMinutesCb) v
+                             return True)
+     
      void $ G.on (ui^.uiTimer^.uiTimerNudgeButton)
                  buttonPressEvent
                  (tryEvent . io $ sync (frp^.frpTimerNudgeCb))
+
+     let spinButtonCb sb cb = onOutput (ui^.uiSettings^.sb) $
+           do v <- spinButtonGetValue (ui^.uiSettings^.sb)
+              sync $ (frp^.cb) v
+              return False
+
+     spinButtonCb uiSettingsPomodoroSpinButton   frpSettingsPomodoroCb
+     spinButtonCb uiSettingsShortSpinButton      frpSettingsShortBreakCb
+     spinButtonCb uiSettingsLongSpinButton       frpSettingsLongBreakCb
+     spinButtonCb uiSettingsIterationsSpinButton frpSettingsIterationsCb
+
      --
-     --                                   modifyMVar_ mtom (\tom -> do let sess = set timer (Paused v) (tom^.session)
-     --                                                                return (set session sess tom)))
-     killFRP <- sync $ listen (merge (frp^.frpTimerMinutesEvent) (frp^.frpTimerNudgeEvent)) (modifyMVar_ mtom)
-     --    
      syncUi ui tom
      widgetShowAll (ui^.uiWindow)
      --
@@ -200,6 +234,29 @@ main =
      killFRP
 
 
+adjustTomatoTime :: Double -> Tomato -> IO Tomato
+adjustTomatoTime new_time tom =
+  let time_in_range = limitSecondsForTimerByMinutes tom new_time
+      sess = set timer (Paused time_in_range) (tom^.session)
+  in return (set session sess tom)
+
+
+adjustSettings ::  ((Int -> Identity Int) -> Tomato -> Identity Tomato) -> Interval ->
+                  Double -> Tomato -> IO Tomato
+adjustSettings f int n tom =
+  let tom' = set f (round n) tom
+  in if (tom'^.session^.interval) /= int
+        then return tom'
+        else let sess = case (tom'^.session^.timer) of
+                   Running s _ -> set timer (Paused s) (tom'^.session)
+                   _           -> tom'^.session
+             in return (set session sess tom')
+
+
+adjustSettingsIterations :: Double -> Tomato -> IO Tomato
+adjustSettingsIterations iter tom = return $ set iterations (round iter) tom
+
+
 updateMVar :: MVar a -> (a -> IO a) -> IO a
 updateMVar m f = modifyMVar m (\x -> f x >>= (return . (id &&& id)))
 
@@ -207,7 +264,6 @@ updateMVar m f = modifyMVar m (\x -> f x >>= (return . (id &&& id)))
 stepper :: Ui -> MVar Tomato -> IO ()
 stepper ui mtom =
   do tom <- updateMVar mtom stepTomato
-     syncUi ui tom
+     syncUiTimer (ui^.uiTimer) tom
                                   
-
 
