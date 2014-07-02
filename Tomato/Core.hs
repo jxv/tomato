@@ -173,6 +173,30 @@ tomatoSeconds tom =  case (tom^.session^.timer) of
   Finished    -> tomatoTimeLimit tom
 
 
+startRing :: Timer -> Timer -> Bool
+startRing Running{} Finished = True
+startRing Paused{}  Finished = True
+startRing _         _        = False
+
+
+stopRing :: Timer -> Timer -> Bool
+stopRing Finished Finished = False
+stopRing Finished        _ = True
+stopRing _               _ = False
+
+
+startTickTock :: Timer -> Timer -> Bool
+startTickTock NotStarted Running{} = True
+startTickTock Paused{}   Running{} = True
+startTickTock _          _         = False
+
+
+stopTickTock :: Timer -> Timer -> Bool
+stopTickTock Running{}  Running{}  = False
+stopTickTock Running{}  _          = True
+stopTickTock _          _          = False
+
+
 -- Auxiliary functions for adjusting data from outside tomato-core.
 
 
