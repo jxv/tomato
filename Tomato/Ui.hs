@@ -265,5 +265,6 @@ stepper :: Ui -> MVar Tomato -> IO ()
 stepper ui mtom =
   do tom <- updateMVar mtom stepTomato
      syncUiTimer (ui^.uiTimer) tom
+     threadDelay 100000 -- don't update too fast
                                   
 
