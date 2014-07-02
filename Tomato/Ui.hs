@@ -8,11 +8,13 @@ module Tomato.Ui where
 
 import Control.Monad
 import Control.Applicative
+import Control.Arrow
 import Control.Concurrent
 import Data.Function
 import FRP.Sodium
 import Control.Lens 
-import Graphics.UI.Gtk hiding (set, on)
+import Graphics.UI.Gtk.Gdk.Gdk
+import Graphics.UI.Gtk hiding (set, on, get)
 import qualified Graphics.UI.Gtk as G
 
 import Tomato.Core
@@ -45,9 +47,18 @@ data Ui = Ui
   , _uiSettings :: UiSettings }
 
 
+data Frp = Frp
+  { _frpTimerNudgeEvent :: Event (Tomato -> IO Tomato)
+  , _frpTimerNudgeCb :: Reactive ()
+  , _frpTimerMinutesEvent :: Event (Tomato -> IO Tomato)
+  , _frpTimerMinutesCb :: Reactive () }
+ 
+
+
 makeLenses ''UiTimer
 makeLenses ''UiSettings
 makeLenses ''Ui
+makeLenses ''Frp
 
 
 --
@@ -100,6 +111,17 @@ buildUi builder = Ui
   <*> (buildUiSettings builder)
 
 
+initFrp :: IO Frp
+initFrp =
+  do (timer_nudge_event, timer_nudge_cb) <- sync newEvent
+     (timer_minutes_event, timer_minutes_cb) <- sync newEvent
+     return $ Frp
+       { _frpTimerNudgeEvent = timer_nudge_event
+       , _frpTimerNudgeCb = timer_nudge_cb nudgeTomatoTimer
+       , _frpTimerMinutesEvent = timer_minutes_event
+       , _frpTimerMinutesCb = timer_minutes_cb return }
+    
+
 --
 
 
@@ -114,8 +136,9 @@ syncUiTimer ut tom =
   do G.set (ut^.uiTimerIntervalLabel)     [ labelText := (show $ tom^.session^.interval) ]
      G.set (ut^.uiTimerCompletedLabel)    [ labelText := ("Completed " ++ (show $ tom^.completed)) ]
      G.set (ut^.uiTimerNudgeButton)       [ buttonLabel := (show $ nudger tom) ]
-     G.set (ut^.uiTimerMinutesAdjustment) [ adjustmentValue := (tomatoSeconds tom / 60)
+     G.set (ut^.uiTimerMinutesAdjustment) [ adjustmentValue := (tomatoSeconds tom * secs_per_min)
                                           , adjustmentUpper := (tomatoTimeLimit tom)]
+ where secs_per_min = 1 / 60
 
 
 syncUiSettings :: UiSettings -> Tomato -> IO ()
@@ -126,12 +149,16 @@ syncUiSettings us tom =
      G.set (us^.uiSettingsShortSpinButton)      (attrs $ fromIntegral (tom^.shortBreak))
      G.set (us^.uiSettingsLongSpinButton)       (attrs $ fromIntegral (tom^.longBreak))
      G.set (us^.uiSettingsIterationsSpinButton) (attrs $ fromIntegral (tom^.iterations))
-     G.spinButtonSetRange (us^.uiSettingsPomodoroSpinButton)   0 120
-     G.spinButtonSetRange (us^.uiSettingsShortSpinButton)      0 120
-     G.spinButtonSetRange (us^.uiSettingsLongSpinButton)       0 120
-     G.spinButtonSetRange (us^.uiSettingsIterationsSpinButton) 0 20
+     G.spinButtonSetRange (us^.uiSettingsPomodoroSpinButton)   min_int_mins  max_int_mins
+     G.spinButtonSetRange (us^.uiSettingsShortSpinButton)      min_int_mins  max_int_mins
+     G.spinButtonSetRange (us^.uiSettingsLongSpinButton)       min_int_mins  max_int_mins
+     G.spinButtonSetRange (us^.uiSettingsIterationsSpinButton) min_iter_mins max_iter_mins
      G.set (us^.uiSettingsVolumeAdjustment) [ adjustmentValue := 100
                                             , adjustmentUpper := 100 ]
+ where min_int_mins = 0
+       max_int_mins = 120
+       min_iter_mins = 0
+       max_iter_mins = 20
 
 
 main :: IO ()
@@ -142,14 +169,45 @@ main =
      builderAddFromFile builder "data/tomato.ui"
      ui <- buildUi builder
      --
-     mtom <- newMVar tomatoDef
+     mtom <- newMVar (set pomodoro 1 tomatoDef)
      tom <- readMVar mtom
      void $ G.on (ui^.uiWindow) objectDestroy mainQuit
      G.set (ui^.uiWindow) [ windowTitle := "Tomato", windowResizable := False ]
      -- G.set (ui^.nudgeButton) [ buttonLabel := "Start" ]
      G.set (ui^.uiTimer^.uiTimerMinutesScale) [ scaleDigits := 0]
+     --
+     frp <- initFrp
+     --
+     let adj = ui^.uiTimer^.uiTimerMinutesAdjustment
+     void $ onValueChanged adj (do v <- G.get adj adjustmentValue
+                                   print v
+                                   sync (frp^.frpTimerMinutesCb))
+     void $ G.on (ui^.uiTimer^.uiTimerNudgeButton)
+                 buttonPressEvent
+                 (tryEvent . io $ sync (frp^.frpTimerNudgeCb))
+     --
+     --                                   modifyMVar_ mtom (\tom -> do let sess = set timer (Paused v) (tom^.session)
+     --                                                                return (set session sess tom)))
+     killFRP <- sync $ listen (merge (frp^.frpTimerMinutesEvent) (frp^.frpTimerNudgeEvent)) (modifyMVar_ mtom)
+     --    
      syncUi ui tom
      widgetShowAll (ui^.uiWindow)
+     --
+     void $ idleAdd (do stepper ui mtom
+                        return True)
+                    priorityDefaultIdle
      mainGUI
+     killFRP
+
+
+updateMVar :: MVar a -> (a -> IO a) -> IO a
+updateMVar m f = modifyMVar m (\x -> f x >>= (return . (id &&& id)))
+
+
+stepper :: Ui -> MVar Tomato -> IO ()
+stepper ui mtom =
+  do tom <- updateMVar mtom stepTomato
+     syncUi ui tom
+                                  
 
 
