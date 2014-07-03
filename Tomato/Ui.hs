@@ -139,8 +139,8 @@ initFrp ad =
 
 initAudio :: IO Audio
 initAudio =
-  do tick_tock <- S.loadMUS =<< getDataFileName "data/tick_tock.ogg"
-     ring      <- S.loadMUS =<< getDataFileName "data/ring.ogg"
+  do tick_tock <- S.loadMUS =<< getDataFileName "tick_tock.ogg"
+     ring      <- S.loadMUS =<< getDataFileName "ring.ogg"
      return $ Audio
        { _audioTickTock = tick_tock
        , _audioRing     = ring }
@@ -195,7 +195,7 @@ main =
      S.setMusicVolume 100
      --
      builder <- builderNew
-     builderAddFromFile builder =<< getDataFileName "data/tomato.ui"
+     builderAddFromFile builder =<< getDataFileName "tomato.ui"
      ui <- buildUi builder
      --
      mtom <- newMVar tomatoDef

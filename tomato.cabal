@@ -9,12 +9,13 @@ maintainer:          http://github.com/jxv/tomato
 -- copyright:           
 category:            Productivity
 build-type:          Simple
+data-dir: data
+data-files:
+  tomato.ui,
+  tick_tock.ogg,
+  ring.ogg
 extra-source-files:
   README.md,
-  data/tomato.ui,
-  data/tick_tock.ogg,
-  data/ring.ogg
-data-files:
   data/tomato.ui,
   data/tick_tock.ogg,
   data/ring.ogg
