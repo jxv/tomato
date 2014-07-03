@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE LambdaCase #-}
 
 
 module Tomato.Ui where
@@ -149,6 +150,13 @@ initAudio =
 --
 
 
+intervalName :: Interval -> String
+intervalName = \case
+  Pomodoro   -> "Pomodoro"
+  LongBreak  -> "Long break"
+  ShortBreak -> "Short break"
+
+
 syncUi :: Ui -> Tomato -> IO ()
 syncUi ui tom =
   do syncUiTimer (ui^.uiTimer) tom
@@ -157,7 +165,7 @@ syncUi ui tom =
 
 syncUiTimer :: UiTimer -> Tomato -> IO ()
 syncUiTimer ut tom =
-  do G.set (ut^.uiTimerIntervalLabel)     [ labelText := (show $ tom^.session^.interval) ]
+  do G.set (ut^.uiTimerIntervalLabel)     [ labelText := intervalName (tom^.session^.interval) ]
      G.set (ut^.uiTimerCompletedLabel)    [ labelText := ("Completed " ++ (show $ tom^.completed)) ]
      G.set (ut^.uiTimerNudgeButton)       [ buttonLabel := (show $ nudger tom) ]
      G.set (ut^.uiTimerMinutesAdjustment) [ adjustmentValue := (tomatoSeconds tom * secs_per_min)

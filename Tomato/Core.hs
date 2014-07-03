@@ -23,7 +23,6 @@ data Nudger
   | Resume
   | Pause
   | Next
-  | Restart
   deriving (Show, Eq)
 
 
@@ -160,9 +159,7 @@ nudger tom = case (tom^.session^.timer) of
   NotStarted -> Start
   Running{}  -> Pause
   Paused{}   -> Resume
-  Finished   -> if tom^.session^.interval == LongBreak
-                   then Restart
-                   else Next
+  Finished   -> Next
 
 
 tomatoSeconds :: Tomato -> Double
