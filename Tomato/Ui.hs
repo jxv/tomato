@@ -268,10 +268,11 @@ adjustSettings f int n tom =
   let tom' = set f (round n) tom
   in if (tom'^.session^.interval) /= int
         then return tom'
-        else let sess = case (tom'^.session^.timer) of
-                   Running s _ -> set timer (Paused s) (tom'^.session)
-                   _           -> tom'^.session
-             in return (set session sess tom')
+        else do let sess = case (tom'^.session^.timer) of
+                      Running s _ -> set timer (Paused s) (tom'^.session)
+                      _           -> tom'^.session
+                S.pauseMusic
+                return (set session sess tom')
 
 
 adjustSettingsIterations :: Double -> Tomato -> IO Tomato
