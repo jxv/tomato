@@ -5,7 +5,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Tomato.Core
-  ( tomatoDef
+  ( module Tomato.Core.Types
+  , tomatoDef
   , stepTomato
   , tomatoTimeLimit
   , nudgeTomatoTimer
@@ -26,7 +27,7 @@ import Data.Time.Clock
 import Data.Time.Calendar
 import Control.Lens
 
-import Tomato.Types
+import Tomato.Core.Types
 
 
 --

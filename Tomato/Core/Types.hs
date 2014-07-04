@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Tomato.Types where
+module Tomato.Core.Types where
 
 
 import Control.Monad.State

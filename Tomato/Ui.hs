@@ -23,7 +23,6 @@ import Graphics.UI.Gtk hiding (set, on, get)
 import qualified Graphics.UI.Gtk as G
 
 import Paths_tomato
-import Tomato.Types
 import Tomato.Core
 
 
@@ -66,7 +65,9 @@ data Frp = Frp
   , _frpSettingsLongBreakEvent  :: Event (Tomato -> IO Tomato)
   , _frpSettingsLongBreakCb     :: Double -> Reactive ()
   , _frpSettingsIterationsEvent :: Event (Tomato -> IO Tomato)
-  , _frpSettingsIterationsCb    :: Double -> Reactive () }
+  , _frpSettingsIterationsCb    :: Double -> Reactive ()
+  , _frpSettingsVolumeEvent     :: Event (Tomato -> IO Tomato)
+  , _frpSettingsVolumeCb        :: Double -> Reactive () }
 
 
 data Audio = Audio
@@ -122,12 +123,14 @@ initFrp ad =
      (settings_short_break_event, settings_short_break_cb) <- sync newEvent
      (settings_long_break_event, settings_long_break_cb)   <- sync newEvent
      (settings_iterations_event, settings_iterations_cb)   <- sync newEvent
+     (settings_volume_event, settings_volume_cb)           <- sync newEvent
      return $ Frp
        { _frpTimerNudgeEvent         = timer_nudge_event
        , _frpTimerNudgeCb            = timer_nudge_cb (\tom -> do tom' <- nudgeTomatoTimer tom
                                                                   let (t0,t1) = (tom^.timer, tom'^.timer)
                                                                   when (stopTickTock t0 t1 || stopRing t0 t1) $ S.pauseMusic
-                                                                  when (startTickTock t0 t1) $ S.playMusic (ad^.audioTickTock) (-1)
+                                                                  when (startTickTock t0 t1) $ S.playMusic (ad^.audioTickTock)
+                                                                                                           (-1)
                                                                   return tom')
        , _frpTimerMinutesEvent       = timer_minutes_event
        , _frpTimerMinutesCb          = timer_minutes_cb . (adjustTomatoTime ad)
@@ -138,7 +141,9 @@ initFrp ad =
        , _frpSettingsLongBreakEvent  = settings_long_break_event
        , _frpSettingsLongBreakCb     = settings_long_break_cb . (adjustSettings longBreak Minutes LongBreak)
        , _frpSettingsIterationsEvent = settings_iterations_event
-       , _frpSettingsIterationsCb    = settings_iterations_cb . adjustSettingsIterations }
+       , _frpSettingsIterationsCb    = settings_iterations_cb . adjustSettingsIterations
+       , _frpSettingsVolumeEvent     = settings_volume_event
+       , _frpSettingsVolumeCb        = settings_volume_cb . adjustSettingsVolume }
 
 
 initAudio :: IO Audio
@@ -188,8 +193,7 @@ syncUiSettings us tom =
      G.spinButtonSetRange (us^.uiSettingsShortSpinButton)      min_int_mins  max_int_mins
      G.spinButtonSetRange (us^.uiSettingsLongSpinButton)       min_int_mins  max_int_mins
      G.spinButtonSetRange (us^.uiSettingsIterationsSpinButton) min_iter_mins max_iter_mins
-     G.set (us^.uiSettingsVolumeAdjustment) [ adjustmentValue := 100
-                                            , adjustmentUpper := 100 ]
+     G.set (us^.uiSettingsVolumeAdjustment) [ adjustmentUpper := 100 ]
  where min_int_mins = 0
        max_int_mins = 120
        min_iter_mins = 0
@@ -226,12 +230,19 @@ main =
            , frp^.frpSettingsPomodoroEvent 
            , frp^.frpSettingsShortBreakEvent 
            , frp^.frpSettingsLongBreakEvent 
-           , frp^.frpSettingsIterationsEvent ]
+           , frp^.frpSettingsIterationsEvent
+           , frp^.frpSettingsVolumeEvent ]
      killFRP <- sync $ listen (foldr1 merge evts) (modifyMVar_ mtom)
      --
      void $ G.on (ui^.uiTimer^.uiTimerMinutesScale)
                  changeValue
                  (\_ v -> do sync $ (frp^.frpTimerMinutesCb) v
+                             return True)
+
+     void $ G.on (ui^.uiSettings^.uiSettingsVolumeScale)
+                 changeValue
+                 (\_ v -> do sync $ (frp^.frpSettingsVolumeCb) v
+                             G.set (ui^.uiSettings^.uiSettingsVolumeAdjustment) [ adjustmentValue := v ]
                              return True)
      
      void $ G.on (ui^.uiTimer^.uiTimerNudgeButton)
@@ -242,14 +253,14 @@ main =
            do v <- spinButtonGetValue (ui^.uiSettings^.sb)
               sync $ (frp^.cb) v
               return False
-
+     --
      spinButtonCb uiSettingsPomodoroSpinButton   frpSettingsPomodoroCb
      spinButtonCb uiSettingsShortSpinButton      frpSettingsShortBreakCb
      spinButtonCb uiSettingsLongSpinButton       frpSettingsLongBreakCb
      spinButtonCb uiSettingsIterationsSpinButton frpSettingsIterationsCb
-
      --
      syncUi ui tom
+     G.set (ui^.uiSettings^.uiSettingsVolumeAdjustment) [ adjustmentValue := 100 ]
      widgetShowAll (ui^.uiWindow)
      --
      void $ idleAdd (do stepper audio ui mtom
@@ -269,6 +280,17 @@ adjustTomatoTime ad mins tom =
                   tom
 
 
+adjustSettingsIterations :: Double -> Tomato -> IO Tomato
+adjustSettingsIterations iter tom = return (set iterations (round iter) tom)
+
+
+adjustSettingsVolume :: Double -> Tomato -> IO Tomato
+adjustSettingsVolume n tom =
+  do S.setMusicVolume (round n)
+     -- G.set (ui^.uiSettings^.uiSettingsVolumeAdjustment) [ adjustmentValue := 100 ]
+     return tom
+
+
 -- adjustSettings ::  ((Double -> Identity Double) -> Tomato -> Identity Tomato) -> Interval ->
 --                   Double -> Tomato -> IO Tomato
 adjustSettings f g int n tom =
@@ -279,10 +301,6 @@ adjustSettings f g int n tom =
                 return $ case (tom'^.timer) of
                   Running s _ -> set timer (Paused s) tom'
                   _           -> tom'
-
-
-adjustSettingsIterations :: Double -> Tomato -> IO Tomato
-adjustSettingsIterations iter tom = return $ set iterations (round iter) tom
 
 
 updateMVar :: MVar a -> (a -> IO a) -> IO a
