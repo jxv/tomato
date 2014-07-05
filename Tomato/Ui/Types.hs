@@ -39,7 +39,8 @@ data UiSettings = UiSettings
 data Ui = Ui
   { _uiWindow   :: Window
   , _uiTimer    :: UiTimer
-  , _uiSettings :: UiSettings }
+  , _uiSettings :: UiSettings
+  , _UiNotifier :: N.Client }
 
 
 data Frp = Frp
@@ -61,7 +62,14 @@ data Frp = Frp
 
 data Audio = Audio
   { _audioTickTock :: S.Music
-  , _audioRing     :: S.Music }
+  , _audioRing     :: S.Music
+  , _audioVolume   :: Int }
+
+
+data App = App
+  { _appUi       :: Ui
+  , _appFrp      :: Frp
+  , _appAudio    :: Audio }
 
 
 makeLenses ''UiTimer
@@ -69,5 +77,6 @@ makeLenses ''UiSettings
 makeLenses ''Ui
 makeLenses ''Frp
 makeLenses ''Audio
+makeLenses ''App
 
 

@@ -58,6 +58,7 @@ buildUi builder = Ui
   <$> builderGetObject builder castToWindow "window"
   <*> buildUiTimer builder
   <*> buildUiSettings builder
+  <*> N.connectSession
 
 
 initFrp :: Audio -> IO Frp
@@ -92,13 +93,20 @@ initFrp ad =
 
 
 initAudio :: IO Audio
-initAudio =
-  do tick_tock <- S.loadMUS =<< getDataFileName "tick_tock.ogg"
-     ring      <- S.loadMUS =<< getDataFileName "ring.ogg"
-     return $ Audio
-       { _audioTickTock = tick_tock
-       , _audioRing     = ring }
+initAudio = Audio
+  <$> (S.loadMUS =<< getDataFileName "tick_tock.ogg")
+  <*> (S.loadMUS =<< getDataFileName "ring.ogg")
+  <*> (pure 100)
 
+
+initApp :: IO App
+initApp = App
+  <$> (do builder <- builderNew
+          builderAddFromFile builder =<< getDataFileName "tomato.ui"
+          buildUi builder)
+  <*> (init_audio >>= initFrp)
+  <*> init_audio
+ where init_audio = initAudio
 
 --
 
