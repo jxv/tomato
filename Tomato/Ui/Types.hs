@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 
 module Tomato.Ui.Types where
@@ -15,16 +16,18 @@ import Graphics.UI.Gtk
 import Tomato.Core.Types
 
 
-data UiTimer = UiTimer
-  { _uiTimerIntervalLabel     :: Label
-  , _uiTimerCompletedLabel    :: Label
-  , _uiTimerMinutesScale      :: Scale
-  , _uiTimerMinutesAdjustment :: Adjustment
-  , _uiTimerNudgeButton       :: Button }
+newtype Volume = Volume { volume :: Int }
+          deriving (Enum, Eq, Integral, Num, Ord, Read, Real, Show)
 
 
-data UiSettings = UiSettings
-  { _uiSettingsPomodoroSpinButton   :: SpinButton
+data Ui = Ui
+  { _uiWindow                       :: Window
+  , _uiTimerIntervalLabel           :: Label
+  , _uiTimerCompletedLabel          :: Label
+  , _uiTimerMinutesScale            :: Scale
+  , _uiTimerMinutesAdjustment       :: Adjustment
+  , _uiTimerNudgeButton             :: Button 
+  , _uiSettingsPomodoroSpinButton   :: SpinButton
   , _uiSettingsShortSpinButton      :: SpinButton
   , _uiSettingsLongSpinButton       :: SpinButton
   , _uiSettingsIterationsSpinButton :: SpinButton
@@ -33,50 +36,43 @@ data UiSettings = UiSettings
   , _uiSettingsShortAdjustment      :: Adjustment
   , _uiSettingsLongAdjustment       :: Adjustment
   , _uiSettingsIterationsAdjustment :: Adjustment
-  , _uiSettingsVolumeAdjustment     :: Adjustment }
-
-
-data Ui = Ui
-  { _uiWindow   :: Window
-  , _uiTimer    :: UiTimer
-  , _uiSettings :: UiSettings
-  , _UiNotifier :: N.Client }
+  , _uiSettingsVolumeAdjustment     :: Adjustment
+  , _UiNotifier                     :: N.Client }
 
 
 data Frp = Frp
-  { _frpTimerNudgeEvent         :: Event (Tomato -> IO Tomato)
+  { _frpTimerNudgeEvent         :: Event (App -> IO App)
   , _frpTimerNudgeCb            :: Reactive ()
-  , _frpTimerMinutesEvent       :: Event (Tomato -> IO Tomato)
+  , _frpTimerMinutesEvent       :: Event (App -> IO App)
   , _frpTimerMinutesCb          :: Double -> Reactive ()
-  , _frpSettingsPomodoroEvent   :: Event (Tomato -> IO Tomato)
+  , _frpSettingsPomodoroEvent   :: Event (App -> IO App)
   , _frpSettingsPomodoroCb      :: Double -> Reactive ()
-  , _frpSettingsShortBreakEvent :: Event (Tomato -> IO Tomato)
+  , _frpSettingsShortBreakEvent :: Event (App -> IO App)
   , _frpSettingsShortBreakCb    :: Double -> Reactive ()
-  , _frpSettingsLongBreakEvent  :: Event (Tomato -> IO Tomato)
+  , _frpSettingsLongBreakEvent  :: Event (App -> IO App)
   , _frpSettingsLongBreakCb     :: Double -> Reactive ()
-  , _frpSettingsIterationsEvent :: Event (Tomato -> IO Tomato)
+  , _frpSettingsIterationsEvent :: Event (App -> IO App) 
   , _frpSettingsIterationsCb    :: Double -> Reactive ()
-  , _frpSettingsVolumeEvent     :: Event (Tomato -> IO Tomato)
+  , _frpSettingsVolumeEvent     :: Event (App -> IO App)
   , _frpSettingsVolumeCb        :: Double -> Reactive () }
 
 
-data Audio = Audio
-  { _audioTickTock :: S.Music
-  , _audioRing     :: S.Music
-  , _audioVolume   :: Int }
+data AudioRes = AudioRes
+  { _audioResTickTock :: S.Music
+  , _audioResRing     :: S.Music }
 
 
 data App = App
-  { _appUi       :: Ui
+  { _appTomato   :: Tomato
+  , _appUi       :: Ui
   , _appFrp      :: Frp
-  , _appAudio    :: Audio }
+  , _appAudioRes :: AudioRes
+  , _appVolume   :: Volume }
 
 
-makeLenses ''UiTimer
-makeLenses ''UiSettings
 makeLenses ''Ui
 makeLenses ''Frp
-makeLenses ''Audio
+makeLenses ''AudioRes
 makeLenses ''App
 
 
