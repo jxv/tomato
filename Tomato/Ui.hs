@@ -61,20 +61,20 @@ initFrp =
      (settings_iterations_event, settings_iterations_cb)   <- sync newEvent
      (settings_volume_event, settings_volume_cb)           <- sync newEvent
      return $ Frp
-       { _frpTimerNudgeEvent         = timer_nudge_event
-       , _frpTimerNudgeCb            = timer_nudge_cb nudgeTimer
-       , _frpTimerMinutesEvent       = timer_minutes_event
-       , _frpTimerMinutesCb          = timer_minutes_cb . adjustTomatoTime
-       , _frpSettingsPomodoroEvent   = settings_pomodoro_event
-       , _frpSettingsPomodoroCb      = settings_pomodoro_cb . (adjustSettings pomodoro Minutes Pomodoro)
-       , _frpSettingsShortBreakEvent = settings_short_break_event
-       , _frpSettingsShortBreakCb    = settings_short_break_cb . (adjustSettings shortBreak Minutes ShortBreak)
-       , _frpSettingsLongBreakEvent  = settings_long_break_event
-       , _frpSettingsLongBreakCb     = settings_long_break_cb . (adjustSettings longBreak Minutes LongBreak)
-       , _frpSettingsIterationsEvent = settings_iterations_event
-       , _frpSettingsIterationsCb    = settings_iterations_cb . adjustSettingsIterations
-       , _frpSettingsVolumeEvent     = settings_volume_event
-       , _frpSettingsVolumeCb        = settings_volume_cb . adjustSettingsVolume }
+       { _timerNudgeEvent         = timer_nudge_event
+       , _timerNudgeCb            = timer_nudge_cb nudgeTimer
+       , _timerMinutesEvent       = timer_minutes_event
+       , _timerMinutesCb          = timer_minutes_cb . adjustTomatoTime
+       , _settingsPomodoroEvent   = settings_pomodoro_event
+       , _settingsPomodoroCb      = settings_pomodoro_cb . (adjustSettings pomodoro Minutes Pomodoro)
+       , _settingsShortBreakEvent = settings_short_break_event
+       , _settingsShortBreakCb    = settings_short_break_cb . (adjustSettings shortBreak Minutes ShortBreak)
+       , _settingsLongBreakEvent  = settings_long_break_event
+       , _settingsLongBreakCb     = settings_long_break_cb . (adjustSettings longBreak Minutes LongBreak)
+       , _settingsIterationsEvent = settings_iterations_event
+       , _settingsIterationsCb    = settings_iterations_cb . adjustSettingsIterations
+       , _settingsVolumeEvent     = settings_volume_event
+       , _settingsVolumeCb        = settings_volume_cb . adjustSettingsVolume }
 
 
 initAudioRes :: IO AudioRes
@@ -112,10 +112,10 @@ syncUi app =
 
 syncUiTimer :: Ui -> Tomato -> IO ()
 syncUiTimer u tom =
-  do G.set (u^.uiTimerIntervalLabel)     [ labelText := intervalName (tom^.interval) ]
-     G.set (u^.uiTimerCompletedLabel)    [ labelText := ("Completed " ++ (show $ tom^.completed)) ]
-     G.set (u^.uiTimerNudgeButton)       [ buttonLabel := (show $ nudger tom) ]
-     G.set (u^.uiTimerMinutesAdjustment) [ adjustmentValue := (minutes . toMinutes $ tomatoSeconds tom)
+  do G.set (u^.timerIntervalLabel)     [ labelText := intervalName (tom^.interval) ]
+     G.set (u^.timerCompletedLabel)    [ labelText := ("Completed " ++ (show $ tom^.completed)) ]
+     G.set (u^.timerNudgeButton)       [ buttonLabel := (show $ nudger tom) ]
+     G.set (u^.timerMinutesAdjustment) [ adjustmentValue := (minutes . toMinutes $ tomatoSeconds tom)
                                           , adjustmentUpper := (minutes $ tomatoTimeLimit tom)]
  where secs_per_min = 1 / 60
 
@@ -124,15 +124,15 @@ syncUiSettings :: Ui -> Tomato -> IO ()
 syncUiSettings u tom =
   do let attrs v = [ spinButtonValue := v
                    , spinButtonDigits := 0 ]
-     G.set (u^.uiSettingsPomodoroSpinButton)   (attrs $ minutes (tom^.pomodoro))
-     G.set (u^.uiSettingsShortSpinButton)      (attrs $ minutes (tom^.shortBreak))
-     G.set (u^.uiSettingsLongSpinButton)       (attrs $ minutes (tom^.longBreak))
-     G.set (u^.uiSettingsIterationsSpinButton) (attrs $ fromIntegral (tom^.iterations))
-     G.spinButtonSetRange (u^.uiSettingsPomodoroSpinButton)   min_int_mins  max_int_mins
-     G.spinButtonSetRange (u^.uiSettingsShortSpinButton)      min_int_mins  max_int_mins
-     G.spinButtonSetRange (u^.uiSettingsLongSpinButton)       min_int_mins  max_int_mins
-     G.spinButtonSetRange (u^.uiSettingsIterationsSpinButton) min_iter_mins max_iter_mins
-     G.set (u^.uiSettingsVolumeAdjustment) [ adjustmentUpper := 100 ]
+     G.set (u^.settingsPomodoroSpinButton)   (attrs $ minutes (tom^.pomodoro))
+     G.set (u^.settingsShortSpinButton)      (attrs $ minutes (tom^.shortBreak))
+     G.set (u^.settingsLongSpinButton)       (attrs $ minutes (tom^.longBreak))
+     G.set (u^.settingsIterationsSpinButton) (attrs $ fromIntegral (tom^.iterations))
+     G.spinButtonSetRange (u^.settingsPomodoroSpinButton)   min_int_mins  max_int_mins
+     G.spinButtonSetRange (u^.settingsShortSpinButton)      min_int_mins  max_int_mins
+     G.spinButtonSetRange (u^.settingsLongSpinButton)       min_int_mins  max_int_mins
+     G.spinButtonSetRange (u^.settingsIterationsSpinButton) min_iter_mins max_iter_mins
+     G.set (u^.settingsVolumeAdjustment) [ adjustmentUpper := 100 ]
  where min_int_mins = 0
        max_int_mins = 120
        min_iter_mins = 0
@@ -152,48 +152,48 @@ main =
      -- void $ N.notify client start_note
      --
      mapp <- newMVar app
-     void $ G.on (app^.ui^.uiWindow) objectDestroy mainQuit
-     G.set (app^.ui^.uiWindow) [ windowTitle := "Tomato", windowResizable := False ]
-     G.set (app^.ui^.uiTimerMinutesScale) [ scaleDigits := 0]
+     void $ G.on (app^.ui^.window) objectDestroy mainQuit
+     G.set (app^.ui^.window) [ windowTitle := "Tomato", windowResizable := False ]
+     G.set (app^.ui^.timerMinutesScale) [ scaleDigits := 0]
      --
      let evts =
-           [ app^.frp^.frpTimerMinutesEvent
-           , app^.frp^.frpTimerNudgeEvent
-           , app^.frp^.frpSettingsPomodoroEvent 
-           , app^.frp^.frpSettingsShortBreakEvent 
-           , app^.frp^.frpSettingsLongBreakEvent 
-           , app^.frp^.frpSettingsIterationsEvent
-           , app^.frp^.frpSettingsVolumeEvent ]
+           [ app^.frp^.timerMinutesEvent
+           , app^.frp^.timerNudgeEvent
+           , app^.frp^.settingsPomodoroEvent 
+           , app^.frp^.settingsShortBreakEvent 
+           , app^.frp^.settingsLongBreakEvent 
+           , app^.frp^.settingsIterationsEvent
+           , app^.frp^.settingsVolumeEvent ]
      killFRP <- sync $ listen (foldr1 merge evts) (modifyMVar_ mapp)
      --
-     void $ G.on (app^.ui^.uiTimerMinutesScale)
+     void $ G.on (app^.ui^.timerMinutesScale)
                  changeValue
-                 (\_ v -> do sync $ (app^.frp^.frpTimerMinutesCb) v
+                 (\_ v -> do sync $ (app^.frp^.timerMinutesCb) v
                              return True)
 
-     void $ G.on (app^.ui^.uiSettingsVolumeScale)
+     void $ G.on (app^.ui^.settingsVolumeScale)
                  changeValue
-                 (\_ v -> do sync $ (app^.frp^.frpSettingsVolumeCb) v
-                             G.set (app^.ui^.uiSettingsVolumeAdjustment) [ adjustmentValue := v ]
+                 (\_ v -> do sync $ (app^.frp^.settingsVolumeCb) v
+                             G.set (app^.ui^.settingsVolumeAdjustment) [ adjustmentValue := v ]
                              return True)
      
-     void $ G.on (app^.ui^.uiTimerNudgeButton)
+     void $ G.on (app^.ui^.timerNudgeButton)
                  buttonPressEvent
-                 (tryEvent . io $ sync (app^.frp^.frpTimerNudgeCb))
+                 (tryEvent . io $ sync (app^.frp^.timerNudgeCb))
 
      let spinButtonCb sb cb = onOutput (app^.ui^.sb) $
            do v <- spinButtonGetValue (app^.ui^.sb)
               sync $ (app^.frp^.cb) v
               return False
      --
-     spinButtonCb uiSettingsPomodoroSpinButton   frpSettingsPomodoroCb
-     spinButtonCb uiSettingsShortSpinButton      frpSettingsShortBreakCb
-     spinButtonCb uiSettingsLongSpinButton       frpSettingsLongBreakCb
-     spinButtonCb uiSettingsIterationsSpinButton frpSettingsIterationsCb
+     spinButtonCb settingsPomodoroSpinButton   settingsPomodoroCb
+     spinButtonCb settingsShortSpinButton      settingsShortBreakCb
+     spinButtonCb settingsLongSpinButton       settingsLongBreakCb
+     spinButtonCb settingsIterationsSpinButton settingsIterationsCb
      --
      syncUi app
-     G.set (app^.ui^.uiSettingsVolumeAdjustment) [ adjustmentValue := 100 ]
-     widgetShowAll (app^.ui^.uiWindow)
+     G.set (app^.ui^.settingsVolumeAdjustment) [ adjustmentValue := 100 ]
+     widgetShowAll (app^.ui^.window)
      --
      void $ idleAdd (do stepper mapp
                         return True)
@@ -220,7 +220,7 @@ adjustSettingsIterations iter app = return $ app
 adjustSettingsVolume :: Double -> App -> IO App
 adjustSettingsVolume n app =
   do S.setMusicVolume (round n)
-     -- G.set (ui^.uiSettingsVolumeAdjustment) [ adjustmentValue := 100 ]
+     -- G.set (ui^.settingsVolumeAdjustment) [ adjustmentValue := 100 ]
      return app
 
 
@@ -246,7 +246,7 @@ stepper mapp =
   do modifyMVar_ mapp $ \app ->
        do tom <- stepTomato (app^.tomato)
           when (startRing (app^.tomato^.timer) (tom^.timer))
-               (S.playMusic (app^.audioRes^.audioResRing) 0)
+               (S.playMusic (app^.audioRes^.ringMusic) 0)
           syncUiTimer (app^.ui) tom
           return $ set tomato tom app
      threadDelay 100000
@@ -264,7 +264,7 @@ nudgeTimer app =
   do tom' <- nudgeTomatoTimer (app^.tomato)
      let (t0,t1) = (app^.tomato^.timer, tom'^.timer)
      when (stopTickTock t0 t1 || stopRing t0 t1) $ S.pauseMusic
-     when (startTickTock t0 t1) $ S.playMusic (app^.audioRes^.audioResTickTock) (-1)
+     when (startTickTock t0 t1) $ S.playMusic (app^.audioRes^.tickTockMusic) (-1)
      return (set tomato tom' app)
 
 
