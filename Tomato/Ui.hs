@@ -207,9 +207,9 @@ main =
 adjustTomatoTime :: Double -> App -> IO App
 adjustTomatoTime mins app =
   do S.pauseMusic
-     return $ app { _tomato = set timer
-                                     (Paused $ limitSecondsForTimerByMinutes (app^.tomato) (Minutes mins))
-                                     (app^.tomato) }
+     let tmr = Paused $ limitSecondsForTimerByMinutes (app^.tomato) (Minutes mins)
+         tom = set timer tmr (app^.tomato)
+     return $ set tomato tom app
 
 
 adjustSettingsIterations :: Double -> App -> IO App
@@ -248,6 +248,13 @@ stepper mapp =
           when (startRing (app^.tomato^.timer) (tom^.timer))
                (S.playMusic (app^.audioRes^.ringMusic) 0)
           syncUiTimer (app^.ui) tom
+          -- 
+          -- last minute notification
+          when (startingLastMinute (tomatoTimeLimit tom) (tomatoSeconds $ app^.tomato) (tomatoSeconds tom)) $
+               void $ N.notify (app^.ui^.notifierClient)
+                               (N.blankNote { N.summary = (intervalName $ tom^.interval) 
+                                            , N.body = Just $ N.Text "Last minute" })
+          -- 
           return $ set tomato tom app
      threadDelay 100000
 

@@ -19,6 +19,7 @@ module Tomato.Core
   , limitSecondsForTimerByMinutes
   , toSeconds
   , toMinutes
+  , startingLastMinute
   ) where
 
 
@@ -177,6 +178,14 @@ limitSecondsForTimerByMinutes tom mins =
   in if | mins < 0          -> Seconds 0
         | mins > time_limit -> toSeconds time_limit
         | otherwise         -> toSeconds mins
+
+
+startingLastMinute :: Minutes -> Seconds -> Seconds -> Bool
+startingLastMinute max_mins secs secs' = 
+  let max_secs   = toSeconds max_mins
+      secs_left  = max_secs - secs
+      secs_left' = max_secs - secs'
+  in secs_left >= 60 && secs_left' < 60 && secs_left' >= 0
 
 
 --
