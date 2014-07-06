@@ -185,7 +185,7 @@ startingLastMinute max_mins secs secs' =
   let max_secs   = toSeconds max_mins
       secs_left  = max_secs - secs
       secs_left' = max_secs - secs'
-  in secs_left >= 60 && secs_left' < 60 && secs_left' >= 0
+  in secs_left >= 60 && secs_left' < 60 && secs_left' > 0
 
 
 --

@@ -32,22 +32,23 @@ import Tomato.Ui.Types
 
 buildUi :: Builder -> IO Ui
 buildUi builder = Ui
-  <$> builderGetObject builder castToWindow     "window"
-  <*> builderGetObject builder castToLabel      "label_timer_interval"
-  <*> builderGetObject builder castToLabel      "label_timer_completed"
-  <*> builderGetObject builder castToScale      "scale_timer_minutes"
-  <*> builderGetObject builder castToAdjustment "adjustment_timer_minutes"
-  <*> builderGetObject builder castToButton     "button_timer_nudge"
-  <*> builderGetObject builder castToSpinButton "spinbutton_settings_pomodoro"
-  <*> builderGetObject builder castToSpinButton "spinbutton_settings_short"
-  <*> builderGetObject builder castToSpinButton "spinbutton_settings_long"
-  <*> builderGetObject builder castToSpinButton "spinbutton_settings_iterations"
-  <*> builderGetObject builder castToScale      "scale_settings_volume"
-  <*> builderGetObject builder castToAdjustment "adjustment_settings_pomodoro"
-  <*> builderGetObject builder castToAdjustment "adjustment_settings_short"
-  <*> builderGetObject builder castToAdjustment "adjustment_settings_long"
-  <*> builderGetObject builder castToAdjustment "adjustment_settings_iterations"
-  <*> builderGetObject builder castToAdjustment "adjustment_settings_volume"
+  <$> builderGetObject builder castToWindow      "window"
+  <*> builderGetObject builder castToLabel       "label_timer_interval"
+  <*> builderGetObject builder castToLabel       "label_timer_completed"
+  <*> builderGetObject builder castToScale       "scale_timer_minutes"
+  <*> builderGetObject builder castToAdjustment  "adjustment_timer_minutes"
+  <*> builderGetObject builder castToButton      "button_timer_nudge"
+  <*> builderGetObject builder castToSpinButton  "spinbutton_settings_pomodoro"
+  <*> builderGetObject builder castToSpinButton  "spinbutton_settings_short"
+  <*> builderGetObject builder castToSpinButton  "spinbutton_settings_long"
+  <*> builderGetObject builder castToSpinButton  "spinbutton_settings_iterations"
+  <*> builderGetObject builder castToScale       "scale_settings_volume"
+  <*> builderGetObject builder castToAdjustment  "adjustment_settings_pomodoro"
+  <*> builderGetObject builder castToAdjustment  "adjustment_settings_short"
+  <*> builderGetObject builder castToAdjustment  "adjustment_settings_long"
+  <*> builderGetObject builder castToAdjustment  "adjustment_settings_iterations"
+  <*> builderGetObject builder castToAdjustment  "adjustment_settings_volume"
+  <*> builderGetObject builder castToCheckButton "checkbutton_settings_final_minute"
   <*> N.connectSession
 
 
@@ -253,8 +254,8 @@ stepper mapp =
           when (startingLastMinute (tomatoTimeLimit tom) (tomatoSeconds $ app^.tomato) (tomatoSeconds tom)) $
                void $ N.notify (app^.ui^.notifierClient)
                                (N.blankNote { N.summary = (intervalName $ tom^.interval) 
-                                            , N.body = Just $ N.Text "Last minute" })
-          -- 
+                                            , N.body = Just $ N.Text "1 minute left" })
+          --
           return $ set tomato tom app
      threadDelay 100000
 

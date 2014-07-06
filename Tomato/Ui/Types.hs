@@ -21,23 +21,24 @@ newtype Volume = Volume { volume :: Int }
 
 
 data Ui = Ui
-  { _window                       :: Window
-  , _timerIntervalLabel           :: Label
-  , _timerCompletedLabel          :: Label
-  , _timerMinutesScale            :: Scale
-  , _timerMinutesAdjustment       :: Adjustment
-  , _timerNudgeButton             :: Button 
-  , _settingsPomodoroSpinButton   :: SpinButton
-  , _settingsShortSpinButton      :: SpinButton
-  , _settingsLongSpinButton       :: SpinButton
-  , _settingsIterationsSpinButton :: SpinButton
-  , _settingsVolumeScale          :: Scale
-  , _settingsPomodoroAdjustment   :: Adjustment
-  , _settingsShortAdjustment      :: Adjustment
-  , _settingsLongAdjustment       :: Adjustment
-  , _settingsIterationsAdjustment :: Adjustment
-  , _settingsVolumeAdjustment     :: Adjustment
-  , _notifierClient               :: N.Client }
+  { _window                         :: Window
+  , _timerIntervalLabel             :: Label
+  , _timerCompletedLabel            :: Label
+  , _timerMinutesScale              :: Scale
+  , _timerMinutesAdjustment         :: Adjustment
+  , _timerNudgeButton               :: Button 
+  , _settingsPomodoroSpinButton     :: SpinButton
+  , _settingsShortSpinButton        :: SpinButton
+  , _settingsLongSpinButton         :: SpinButton
+  , _settingsIterationsSpinButton   :: SpinButton
+  , _settingsVolumeScale            :: Scale
+  , _settingsPomodoroAdjustment     :: Adjustment
+  , _settingsShortAdjustment        :: Adjustment
+  , _settingsLongAdjustment         :: Adjustment
+  , _settingsIterationsAdjustment   :: Adjustment
+  , _settingsVolumeAdjustment       :: Adjustment
+  , _settingsFinalMinuteCheckButton :: CheckButton
+  , _notifierClient                 :: N.Client }
 
 
 data Frp = Frp
