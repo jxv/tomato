@@ -63,11 +63,11 @@ data AudioRes = AudioRes
 
 
 data App = App
-  { _appTomato   :: Tomato
-  , _appUi       :: Ui
-  , _appFrp      :: Frp
-  , _appAudioRes :: AudioRes
-  , _appVolume   :: Volume }
+  { _tomato    :: Tomato
+  , _ui        :: Ui
+  , _frp       :: Frp
+  , _audioRes  :: AudioRes
+  , _sfxVolume :: Volume }
 
 
 makeLenses ''Ui
