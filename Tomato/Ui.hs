@@ -48,6 +48,7 @@ buildUi builder = Ui
   <*> builderGetObject builder castToAdjustment  "adjustment_settings_long"
   <*> builderGetObject builder castToAdjustment  "adjustment_settings_iterations"
   <*> builderGetObject builder castToAdjustment  "adjustment_settings_volume"
+  <*> builderGetObject builder castToCheckButton "checkbutton_settings_five_minutes"
   <*> builderGetObject builder castToCheckButton "checkbutton_settings_final_minute"
   <*> N.connectSession
   <*> pure Nothing
@@ -63,6 +64,7 @@ initFrp =
      (settings_iterations_event, settings_iterations_cb)     <- sync newEvent
      (settings_volume_event, settings_volume_cb)             <- sync newEvent
      (settings_final_minute_event, settings_final_minute_cb) <- sync newEvent
+     (settings_five_minutes_event, settings_five_minutes_cb) <- sync newEvent
      return $ Frp
        { _timerNudgeEvent          = timer_nudge_event
        , _timerNudgeCb             = timer_nudge_cb nudgeTimer
@@ -78,6 +80,8 @@ initFrp =
        , _settingsIterationsCb     = settings_iterations_cb . adjustSettingsIterations
        , _settingsVolumeEvent      = settings_volume_event
        , _settingsVolumeCb         = settings_volume_cb . adjustSettingsVolume
+       , _settingsFiveMinutesEvent = settings_five_minutes_event
+       , _settingsFiveMinutesCb    = settings_five_minutes_cb . adjustFiveMinutes
        , _settingsFinalMinuteEvent = settings_final_minute_event
        , _settingsFinalMinuteCb    = settings_final_minute_cb . adjustFinalMinute }
 
@@ -124,7 +128,7 @@ syncUiTimer u tom =
      G.set (u^.timerCompletedLabel)    [ labelText := ("Completed " ++ (show $ tom^.completed)) ]
      G.set (u^.timerNudgeButton)       [ buttonLabel := (show $ nudger tom) ]
      G.set (u^.timerMinutesAdjustment) [ adjustmentValue := (minutes . toMinutes $ tomatoSeconds tom)
-                                          , adjustmentUpper := (minutes $ tomatoTimeLimit tom)]
+                                       , adjustmentUpper := (minutes $ tomatoTimeLimit tom)]
  where secs_per_min = 1 / 60
 
 
@@ -172,6 +176,7 @@ main =
            , app^.frp^.settingsLongBreakEvent 
            , app^.frp^.settingsIterationsEvent
            , app^.frp^.settingsVolumeEvent
+           , app^.frp^.settingsFiveMinutesEvent
            , app^.frp^.settingsFinalMinuteEvent ]
      killFRP <- sync $ listen (foldr1 merge evts) (modifyMVar_ mapp)
      --
@@ -194,6 +199,11 @@ main =
                  buttonPressEvent
                  (tryEvent . io $ do checked <- toggleButtonGetMode (app^.ui^.settingsFinalMinuteCheckButton)
                                      sync $ (app^.frp^.settingsFinalMinuteCb) (not checked))
+
+     void $ G.on (app^.ui^.settingsFiveMinutesCheckButton)
+                 buttonPressEvent
+                 (tryEvent . io $ do checked <- toggleButtonGetMode (app^.ui^.settingsFiveMinutesCheckButton)
+                                     sync $ (app^.frp^.settingsFiveMinutesCb) (not checked))
 
      let spinButtonCb sb cb = onOutput (app^.ui^.sb) $
            do v <- spinButtonGetValue (app^.ui^.sb)
@@ -257,6 +267,12 @@ adjustFinalMinute checked app =
      return $ set finalMinute checked app
 
 
+adjustFiveMinutes :: Bool -> App -> IO App
+adjustFiveMinutes checked app =
+  do toggleButtonSetMode (app^.ui^.settingsFiveMinutesCheckButton) checked
+     return $ set fiveMinutes checked app
+
+
 updateMVar :: MVar a -> (a -> IO a) -> IO a
 updateMVar m f = modifyMVar m (\x -> f x >>= (return . (id &&& id)))
 
@@ -268,14 +284,22 @@ stepper mapp =
           when (startRing (app^.tomato^.timer) (tom^.timer))
                (S.playMusic (app^.audioRes^.ringMusic) 0)
           syncUiTimer (app^.ui) tom
-          -- 
+          --
+          let secs  = tomatoSeconds (app^.tomato)
+              secs' = tomatoSeconds tom
+              time_limit = tomatoTimeLimit tom
+              int_name = intervalName (tom^.interval)
+              cln = app^.ui^.notifierClient
+              mins_left = round time_limit - (floor $ toMinutes secs')
           -- last minute notification
-          when ((app^.finalMinute) &&
-                startingLastMinute (tomatoTimeLimit tom) (tomatoSeconds $ app^.tomato) (tomatoSeconds tom)) $
-               notify_ (app^.ui^.notifierClient) (easyNote (intervalName $ tom^.interval) "1 minute left")
+          when (app^.finalMinute && startingLastMinute time_limit secs secs')
+               (notify_ cln $ easyNote int_name "1 minute left")
+          -- every five minutes notification
+          when (app^.fiveMinutes && startingEveryNthMinutes 5 secs secs')
+               (notify_ cln $ easyNote int_name (show mins_left ++ " minutes left"))
           -- finished notification
-          when (app^.tomato^.timer /= Finished && tom^.timer == Finished) $
-               notify_ (app^.ui^.notifierClient) (easyNote (intervalName $ tom^.interval) "Finished")
+          when (app^.tomato^.timer /= Finished && tom^.timer == Finished)
+               (notify_ cln $ easyNote int_name "Finished")
           --
           return $ set tomato tom app
      threadDelay 100000

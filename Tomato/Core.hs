@@ -20,6 +20,7 @@ module Tomato.Core
   , toSeconds
   , toMinutes
   , startingLastMinute
+  , startingEveryNthMinutes
   ) where
 
 
@@ -186,6 +187,14 @@ startingLastMinute max_mins secs secs' =
       secs_left  = max_secs - secs
       secs_left' = max_secs - secs'
   in secs_left > 60 && secs_left' <= 60 && secs_left' > 0
+
+
+startingEveryNthMinutes :: Minutes -> Seconds -> Seconds -> Bool
+startingEveryNthMinutes int_mins secs secs' = 
+  let int_mins' = round int_mins
+      mid_min   = floor (toMinutes secs')
+      is_mid    = floor (toMinutes secs) < mid_min
+  in is_mid && (mid_min  `mod` int_mins' == 0)
 
 
 --

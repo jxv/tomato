@@ -37,6 +37,7 @@ data Ui = Ui
   , _settingsLongAdjustment         :: Adjustment
   , _settingsIterationsAdjustment   :: Adjustment
   , _settingsVolumeAdjustment       :: Adjustment
+  , _settingsFiveMinutesCheckButton :: CheckButton
   , _settingsFinalMinuteCheckButton :: CheckButton
   , _notifierClient                 :: N.Client
   , _lastNotification               :: Maybe N.Notification }
@@ -57,6 +58,8 @@ data Frp = Frp
   , _settingsIterationsCb     :: Double -> Reactive ()
   , _settingsVolumeEvent      :: Event (App -> IO App)
   , _settingsVolumeCb         :: Double -> Reactive ()
+  , _settingsFiveMinutesEvent :: Event (App -> IO App)
+  , _settingsFiveMinutesCb    :: Bool -> Reactive ()
   , _settingsFinalMinuteEvent :: Event (App -> IO App)
   , _settingsFinalMinuteCb    :: Bool -> Reactive () }
 
@@ -67,13 +70,13 @@ data AudioRes = AudioRes
 
 
 data App = App
-  { _tomato        :: Tomato
-  , _ui            :: Ui
-  , _frp           :: Frp
-  , _audioRes      :: AudioRes
-  , _sfxVolume     :: Volume 
-  , _finalMinute   :: Bool
-  , _every5Minutes :: Bool }
+  { _tomato      :: Tomato
+  , _ui          :: Ui
+  , _frp         :: Frp
+  , _audioRes    :: AudioRes
+  , _sfxVolume   :: Volume 
+  , _finalMinute :: Bool
+  , _fiveMinutes :: Bool }
 
 
 makeLenses ''Ui
