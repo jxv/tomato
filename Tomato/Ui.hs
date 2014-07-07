@@ -50,6 +50,7 @@ buildUi builder = Ui
   <*> builderGetObject builder castToAdjustment  "adjustment_settings_volume"
   <*> builderGetObject builder castToCheckButton "checkbutton_settings_final_minute"
   <*> N.connectSession
+  <*> pure Nothing
 
 
 initFrp :: IO Frp
@@ -271,12 +272,21 @@ stepper mapp =
           -- last minute notification
           when ((app^.finalMinute) &&
                 startingLastMinute (tomatoTimeLimit tom) (tomatoSeconds $ app^.tomato) (tomatoSeconds tom)) $
-               void $ N.notify (app^.ui^.notifierClient)
-                               (N.blankNote { N.summary = (intervalName $ tom^.interval) 
-                                            , N.body = Just $ N.Text "1 minute left" })
+               notify_ (app^.ui^.notifierClient) (easyNote (intervalName $ tom^.interval) "1 minute left")
+          -- finished notification
+          when (app^.tomato^.timer /= Finished && tom^.timer == Finished) $
+               notify_ (app^.ui^.notifierClient) (easyNote (intervalName $ tom^.interval) "Finished")
           --
           return $ set tomato tom app
      threadDelay 100000
+
+
+easyNote :: String -> String -> N.Note
+easyNote title content = N.blankNote { N.summary = title, N.body = Just (N.Text content) }
+
+
+notify_ :: N.Client -> N.Note -> IO ()
+notify_ client note = void (N.notify client note)
 
 
 io :: MonadIO m => IO a -> m a

@@ -38,7 +38,8 @@ data Ui = Ui
   , _settingsIterationsAdjustment   :: Adjustment
   , _settingsVolumeAdjustment       :: Adjustment
   , _settingsFinalMinuteCheckButton :: CheckButton
-  , _notifierClient                 :: N.Client }
+  , _notifierClient                 :: N.Client
+  , _lastNotification               :: Maybe N.Notification }
 
 
 data Frp = Frp
