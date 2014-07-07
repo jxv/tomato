@@ -42,20 +42,22 @@ data Ui = Ui
 
 
 data Frp = Frp
-  { _timerNudgeEvent         :: Event (App -> IO App)
-  , _timerNudgeCb            :: Reactive ()
-  , _timerMinutesEvent       :: Event (App -> IO App)
-  , _timerMinutesCb          :: Double -> Reactive ()
-  , _settingsPomodoroEvent   :: Event (App -> IO App)
-  , _settingsPomodoroCb      :: Double -> Reactive ()
-  , _settingsShortBreakEvent :: Event (App -> IO App)
-  , _settingsShortBreakCb    :: Double -> Reactive ()
-  , _settingsLongBreakEvent  :: Event (App -> IO App)
-  , _settingsLongBreakCb     :: Double -> Reactive ()
-  , _settingsIterationsEvent :: Event (App -> IO App) 
-  , _settingsIterationsCb    :: Double -> Reactive ()
-  , _settingsVolumeEvent     :: Event (App -> IO App)
-  , _settingsVolumeCb        :: Double -> Reactive () }
+  { _timerNudgeEvent          :: Event (App -> IO App)
+  , _timerNudgeCb             :: Reactive ()
+  , _timerMinutesEvent        :: Event (App -> IO App)
+  , _timerMinutesCb           :: Double -> Reactive ()
+  , _settingsPomodoroEvent    :: Event (App -> IO App)
+  , _settingsPomodoroCb       :: Double -> Reactive ()
+  , _settingsShortBreakEvent  :: Event (App -> IO App)
+  , _settingsShortBreakCb     :: Double -> Reactive ()
+  , _settingsLongBreakEvent   :: Event (App -> IO App)
+  , _settingsLongBreakCb      :: Double -> Reactive ()
+  , _settingsIterationsEvent  :: Event (App -> IO App) 
+  , _settingsIterationsCb     :: Double -> Reactive ()
+  , _settingsVolumeEvent      :: Event (App -> IO App)
+  , _settingsVolumeCb         :: Double -> Reactive ()
+  , _settingsFinalMinuteEvent :: Event (App -> IO App)
+  , _settingsFinalMinuteCb    :: Bool -> Reactive () }
 
 
 data AudioRes = AudioRes
@@ -64,11 +66,13 @@ data AudioRes = AudioRes
 
 
 data App = App
-  { _tomato    :: Tomato
-  , _ui        :: Ui
-  , _frp       :: Frp
-  , _audioRes  :: AudioRes
-  , _sfxVolume :: Volume }
+  { _tomato        :: Tomato
+  , _ui            :: Ui
+  , _frp           :: Frp
+  , _audioRes      :: AudioRes
+  , _sfxVolume     :: Volume 
+  , _finalMinute   :: Bool
+  , _every5Minutes :: Bool }
 
 
 makeLenses ''Ui

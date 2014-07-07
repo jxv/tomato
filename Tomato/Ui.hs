@@ -54,28 +54,32 @@ buildUi builder = Ui
 
 initFrp :: IO Frp
 initFrp =
-  do (timer_nudge_event, timer_nudge_cb)                   <- sync newEvent
-     (timer_minutes_event, timer_minutes_cb)               <- sync newEvent
-     (settings_pomodoro_event, settings_pomodoro_cb)       <- sync newEvent
-     (settings_short_break_event, settings_short_break_cb) <- sync newEvent
-     (settings_long_break_event, settings_long_break_cb)   <- sync newEvent
-     (settings_iterations_event, settings_iterations_cb)   <- sync newEvent
-     (settings_volume_event, settings_volume_cb)           <- sync newEvent
+  do (timer_nudge_event, timer_nudge_cb)                     <- sync newEvent
+     (timer_minutes_event, timer_minutes_cb)                 <- sync newEvent
+     (settings_pomodoro_event, settings_pomodoro_cb)         <- sync newEvent
+     (settings_short_break_event, settings_short_break_cb)   <- sync newEvent
+     (settings_long_break_event, settings_long_break_cb)     <- sync newEvent
+     (settings_iterations_event, settings_iterations_cb)     <- sync newEvent
+     (settings_volume_event, settings_volume_cb)             <- sync newEvent
+     (settings_final_minute_event, settings_final_minute_cb) <- sync newEvent
      return $ Frp
-       { _timerNudgeEvent         = timer_nudge_event
-       , _timerNudgeCb            = timer_nudge_cb nudgeTimer
-       , _timerMinutesEvent       = timer_minutes_event
-       , _timerMinutesCb          = timer_minutes_cb . adjustTomatoTime
-       , _settingsPomodoroEvent   = settings_pomodoro_event
-       , _settingsPomodoroCb      = settings_pomodoro_cb . (adjustSettings pomodoro Minutes Pomodoro)
-       , _settingsShortBreakEvent = settings_short_break_event
-       , _settingsShortBreakCb    = settings_short_break_cb . (adjustSettings shortBreak Minutes ShortBreak)
-       , _settingsLongBreakEvent  = settings_long_break_event
-       , _settingsLongBreakCb     = settings_long_break_cb . (adjustSettings longBreak Minutes LongBreak)
-       , _settingsIterationsEvent = settings_iterations_event
-       , _settingsIterationsCb    = settings_iterations_cb . adjustSettingsIterations
-       , _settingsVolumeEvent     = settings_volume_event
-       , _settingsVolumeCb        = settings_volume_cb . adjustSettingsVolume }
+       { _timerNudgeEvent          = timer_nudge_event
+       , _timerNudgeCb             = timer_nudge_cb nudgeTimer
+       , _timerMinutesEvent        = timer_minutes_event
+       , _timerMinutesCb           = timer_minutes_cb . adjustTomatoTime
+       , _settingsPomodoroEvent    = settings_pomodoro_event
+       , _settingsPomodoroCb       = settings_pomodoro_cb . (adjustSettings pomodoro Minutes Pomodoro)
+       , _settingsShortBreakEvent  = settings_short_break_event
+       , _settingsShortBreakCb     = settings_short_break_cb . (adjustSettings shortBreak Minutes ShortBreak)
+       , _settingsLongBreakEvent   = settings_long_break_event
+       , _settingsLongBreakCb      = settings_long_break_cb . (adjustSettings longBreak Minutes LongBreak)
+       , _settingsIterationsEvent  = settings_iterations_event
+       , _settingsIterationsCb     = settings_iterations_cb . adjustSettingsIterations
+       , _settingsVolumeEvent      = settings_volume_event
+       , _settingsVolumeCb         = settings_volume_cb . adjustSettingsVolume
+       , _settingsFinalMinuteEvent = settings_final_minute_event
+       , _settingsFinalMinuteCb    = settings_final_minute_cb . adjustFinalMinute }
+
 
 
 initAudioRes :: IO AudioRes
@@ -93,6 +97,8 @@ initApp = App
   <*> initFrp
   <*> initAudioRes
   <*> pure 100
+  <*> pure True
+  <*> pure True
 
 
 --
@@ -164,7 +170,8 @@ main =
            , app^.frp^.settingsShortBreakEvent 
            , app^.frp^.settingsLongBreakEvent 
            , app^.frp^.settingsIterationsEvent
-           , app^.frp^.settingsVolumeEvent ]
+           , app^.frp^.settingsVolumeEvent
+           , app^.frp^.settingsFinalMinuteEvent ]
      killFRP <- sync $ listen (foldr1 merge evts) (modifyMVar_ mapp)
      --
      void $ G.on (app^.ui^.timerMinutesScale)
@@ -181,6 +188,11 @@ main =
      void $ G.on (app^.ui^.timerNudgeButton)
                  buttonPressEvent
                  (tryEvent . io $ sync (app^.frp^.timerNudgeCb))
+     
+     void $ G.on (app^.ui^.settingsFinalMinuteCheckButton)
+                 buttonPressEvent
+                 (tryEvent . io $ do checked <- toggleButtonGetMode (app^.ui^.settingsFinalMinuteCheckButton)
+                                     sync $ (app^.frp^.settingsFinalMinuteCb) (not checked))
 
      let spinButtonCb sb cb = onOutput (app^.ui^.sb) $
            do v <- spinButtonGetValue (app^.ui^.sb)
@@ -238,6 +250,12 @@ adjustSettings f g int n app =
                   _           -> app'
 
 
+adjustFinalMinute :: Bool -> App -> IO App
+adjustFinalMinute checked app =
+  do toggleButtonSetMode (app^.ui^.settingsFinalMinuteCheckButton) checked
+     return $ set finalMinute checked app
+
+
 updateMVar :: MVar a -> (a -> IO a) -> IO a
 updateMVar m f = modifyMVar m (\x -> f x >>= (return . (id &&& id)))
 
@@ -251,7 +269,8 @@ stepper mapp =
           syncUiTimer (app^.ui) tom
           -- 
           -- last minute notification
-          when (startingLastMinute (tomatoTimeLimit tom) (tomatoSeconds $ app^.tomato) (tomatoSeconds tom)) $
+          when ((app^.finalMinute) &&
+                startingLastMinute (tomatoTimeLimit tom) (tomatoSeconds $ app^.tomato) (tomatoSeconds tom)) $
                void $ N.notify (app^.ui^.notifierClient)
                                (N.blankNote { N.summary = (intervalName $ tom^.interval) 
                                             , N.body = Just $ N.Text "1 minute left" })
