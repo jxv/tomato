@@ -160,9 +160,6 @@ main =
      --
      app <- initApp
      --
-     -- let start_note = N.blankNote { N.summary = "Starting", N.body = Just $ N.Text "test" }
-     -- void $ N.notify client start_note
-     --
      mapp <- newMVar app
      void $ G.on (app^.ui^.window) objectDestroy mainQuit
      G.set (app^.ui^.window) [ windowTitle := "Tomato", windowResizable := False ]
@@ -253,12 +250,19 @@ adjustSettingsVolume n app =
 adjustSettings f g int n app =
   let tom' = set f (g n) (app^.tomato)
       app' = set tomato tom' app
+  in return app'
+
+
+{-
+  let tom' = set f (g n) (app^.tomato)
+      app' = set tomato tom' app
   in if (tom'^.interval) /= int
         then return app'
         else do S.pauseMusic
                 return $ case (tom'^.timer) of
                   Running s _ -> app' { _tomato = set timer (Paused s) tom' }
                   _           -> app'
+-}
 
 
 adjustFinalMinute :: Bool -> App -> IO App
