@@ -295,15 +295,14 @@ stepper mapp =
               int_name = intervalName (tom^.interval)
               cln = app^.ui^.notifierClient
               mins_left = round time_limit - (floor $ toMinutes secs')
-          -- last minute notification
-          when (app^.finalMinute && startingLastMinute time_limit secs secs')
-               (notify_ cln $ easyNote int_name "1 minute left")
-          -- every five minutes notification
-          when (app^.fiveMinutes && startingEveryNthMinutes 5 secs secs')
-               (notify_ cln $ easyNote int_name (show mins_left ++ " minutes left"))
-          -- finished notification
-          when (app^.tomato^.timer /= Finished && tom^.timer == Finished)
-               (notify_ cln $ easyNote int_name "Finished")
+          --
+          let final_min_notif = app^.finalMinute && startingLastMinute time_limit secs secs'
+              five_mins_notif = app^.fiveMinutes && startingEveryNthMinutes 5 secs secs' && not finished_notif
+              finished_notif  = app^.tomato^.timer /= Finished && tom^.timer == Finished
+          --
+          when final_min_notif (notify_ cln $ easyNote int_name "1 minute left")
+          when five_mins_notif (notify_ cln $ easyNote int_name (show mins_left ++ " minutes left"))
+          when finished_notif  (notify_ cln $ easyNote int_name "Finished")
           --
           return $ set tomato tom app
      threadDelay 100000
