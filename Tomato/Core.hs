@@ -23,7 +23,6 @@ module Tomato.Core
   , startingEveryNthMinutes
   ) where
 
-
 import Control.Monad.State
 import Data.Time.Clock
 import Data.Time.Calendar
@@ -31,15 +30,11 @@ import Control.Lens
 
 import Tomato.Core.Types
 
-
 --
-
 
 type TomatoM = State Tomato
 
-
 --
-
 
 tomatoDef :: Tomato
 tomatoDef = Tomato
@@ -52,7 +47,6 @@ tomatoDef = Tomato
   , _interval = Pomodoro
   , _timer = NotStarted }
 
-
 getDiffSeconds :: UTCTime -> UTCTime -> Seconds
 getDiffSeconds start end =
   let days_passed = fromIntegral $ (day_no end) - (day_no start)
@@ -62,7 +56,6 @@ getDiffSeconds start end =
  where 
   day_no = toModifiedJulianDay . utctDay
   secs_per_day = 24 * 60 * 60
-
 
 tomatoStep :: UTCTime -> TomatoM ()
 tomatoStep cur_time =
@@ -81,8 +74,6 @@ tomatoStep cur_time =
             t <- use timer
             int <- use interval
             completed %= if (t == Finished && int == Pomodoro) then (+1) else id
-            
- 
 
 tomatoNudgeTimer :: UTCTime -> TomatoM ()
 tomatoNudgeTimer cur_time =
@@ -108,13 +99,11 @@ tomatoNudgeTimer cur_time =
                            LongBreak  -> do iteration .= 0
                                             interval .= Pomodoro
 
-
 stepTomato :: Tomato -> IO Tomato
 stepTomato tom =
   do let time_limit = tomatoTimeLimit tom
      cur_time <- getCurrentTime
      return $ execState (tomatoStep cur_time) tom
-
 
 tomatoTimeLimit :: Tomato -> Minutes
 tomatoTimeLimit tom =
@@ -123,12 +112,10 @@ tomatoTimeLimit tom =
     ShortBreak -> shortBreak
     LongBreak  -> longBreak)
 
-
 nudgeTomatoTimer :: Tomato -> IO Tomato
 nudgeTomatoTimer tom =
   do cur_time <- getCurrentTime
      return $ execState (tomatoNudgeTimer cur_time) tom
-
 
 nudger :: Tomato -> Nudger
 nudger tom = case (tom^.timer) of
@@ -137,7 +124,6 @@ nudger tom = case (tom^.timer) of
   Paused{}   -> Resume
   Finished   -> Next
 
-
 tomatoSeconds :: Tomato -> Seconds
 tomatoSeconds tom =  case (tom^.timer) of
   NotStarted  -> 0
@@ -145,33 +131,27 @@ tomatoSeconds tom =  case (tom^.timer) of
   Running s _ -> s
   Finished    -> toSeconds (tomatoTimeLimit tom)
 
-
 startRing :: Timer -> Timer -> Bool
 startRing Running{} Finished = True
 startRing Paused{}  Finished = True
 startRing _         _        = False
-
 
 stopRing :: Timer -> Timer -> Bool
 stopRing Finished Finished = False
 stopRing Finished        _ = True
 stopRing _               _ = False
 
-
 startTickTock :: Timer -> Timer -> Bool
 startTickTock NotStarted Running{} = True
 startTickTock Paused{}   Running{} = True
 startTickTock _          _         = False
-
 
 stopTickTock :: Timer -> Timer -> Bool
 stopTickTock Running{}  Running{}  = False
 stopTickTock Running{}  _          = True
 stopTickTock _          _          = False
 
-
 -- Auxiliary functions for adjusting data from outside tomato-core.
-
 
 limitSecondsForTimerByMinutes :: Tomato -> Minutes -> Seconds
 limitSecondsForTimerByMinutes tom mins =
@@ -180,14 +160,12 @@ limitSecondsForTimerByMinutes tom mins =
         | mins > time_limit -> toSeconds time_limit
         | otherwise         -> toSeconds mins
 
-
 startingLastMinute :: Minutes -> Seconds -> Seconds -> Bool
 startingLastMinute max_mins secs secs' = 
   let max_secs   = toSeconds max_mins
       secs_left  = max_secs - secs
       secs_left' = max_secs - secs'
   in secs_left > 60 && secs_left' <= 60 && secs_left' > 0
-
 
 startingEveryNthMinutes :: Minutes -> Seconds -> Seconds -> Bool
 startingEveryNthMinutes int_mins secs secs' = 
@@ -196,15 +174,11 @@ startingEveryNthMinutes int_mins secs secs' =
       is_mid    = floor (toMinutes secs) < mid_min
   in is_mid && (mid_min  `mod` int_mins' == 0)
 
-
 --
-
 
 toSeconds :: Minutes -> Seconds
 toSeconds (Minutes m) = Seconds (m * 60)
 
-
 toMinutes :: Seconds -> Minutes
 toMinutes (Seconds s) = Minutes (s / 60)
-
 

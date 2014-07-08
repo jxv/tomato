@@ -1,9 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-
 module Tomato.Ui.Types where
-
 
 import FRP.Sodium
 import Control.Lens 
@@ -15,10 +13,10 @@ import Graphics.UI.Gtk
 
 import Tomato.Core.Types
 
+--
 
 newtype Volume = Volume { volume :: Int }
           deriving (Enum, Eq, Integral, Num, Ord, Read, Real, Show)
-
 
 data Ui = Ui
   { _window                         :: Window
@@ -42,7 +40,6 @@ data Ui = Ui
   , _notifierClient                 :: N.Client
   , _lastNotification               :: Maybe N.Notification }
 
-
 data Frp = Frp
   { _timerNudgeEvent          :: Event (App -> IO App)
   , _timerNudgeCb             :: Reactive ()
@@ -63,11 +60,9 @@ data Frp = Frp
   , _settingsFinalMinuteEvent :: Event (App -> IO App)
   , _settingsFinalMinuteCb    :: Bool -> Reactive () }
 
-
 data AudioRes = AudioRes
   { _tickTockMusic :: S.Music
   , _ringMusic     :: S.Music }
-
 
 data App = App
   { _tomato      :: Tomato
@@ -78,10 +73,8 @@ data App = App
   , _finalMinute :: Bool
   , _fiveMinutes :: Bool }
 
-
 makeLenses ''Ui
 makeLenses ''Frp
 makeLenses ''AudioRes
 makeLenses ''App
-
 

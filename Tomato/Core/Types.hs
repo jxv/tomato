@@ -3,12 +3,10 @@
 
 module Tomato.Core.Types where
 
-
 import Control.Monad.State
 import Data.Time.Clock
 import Data.Time.Calendar
 import Control.Lens
-
 
 newtype Seconds = Seconds { seconds :: Double }
           deriving (Show, Eq, Num, Floating, Ord, Fractional, Real, RealFloat, RealFrac)
@@ -16,13 +14,11 @@ newtype Seconds = Seconds { seconds :: Double }
 newtype Minutes = Minutes { minutes :: Double }
           deriving (Show, Eq, Num, Floating, Ord, Fractional, Real, RealFloat, RealFrac)
 
-
 data Interval
   = Pomodoro
   | ShortBreak
   | LongBreak
   deriving (Show, Eq)
-
 
 data Nudger
   = Start
@@ -31,14 +27,12 @@ data Nudger
   | Next
   deriving (Show, Eq)
 
-
 data Timer
   = NotStarted
   | Running Seconds UTCTime
   | Paused Seconds
   | Finished
   deriving (Show, Eq)
-
 
 data Tomato = Tomato
   { _pomodoro   :: Minutes
@@ -51,7 +45,5 @@ data Tomato = Tomato
   , _timer      :: Timer
   } deriving (Show, Eq)
 
-
 makeLenses ''Tomato
-
 

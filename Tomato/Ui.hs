@@ -3,9 +3,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE LambdaCase #-}
 
-
 module Tomato.Ui where
-
 
 import Control.Monad
 import Control.Monad.State
@@ -26,9 +24,7 @@ import Paths_tomato
 import Tomato.Core
 import Tomato.Ui.Types
 
-
 --
-
 
 buildUi :: Builder -> IO Ui
 buildUi builder = Ui
@@ -52,7 +48,6 @@ buildUi builder = Ui
   <*> builderGetObject builder castToCheckButton "checkbutton_settings_final_minute"
   <*> N.connectSession
   <*> pure Nothing
-
 
 initFrp :: IO Frp
 initFrp =
@@ -85,13 +80,10 @@ initFrp =
        , _settingsFinalMinuteEvent = settings_final_minute_event
        , _settingsFinalMinuteCb    = settings_final_minute_cb . adjustFinalMinute }
 
-
-
 initAudioRes :: IO AudioRes
 initAudioRes = AudioRes
   <$> (S.loadMUS =<< getDataFileName "tick_tock.ogg")
   <*> (S.loadMUS =<< getDataFileName "ring.ogg")
-
 
 initApp :: IO App
 initApp = App
@@ -105,9 +97,7 @@ initApp = App
   <*> pure True
   <*> pure True
 
-
 --
-
 
 intervalName :: Interval -> String
 intervalName = \case
@@ -115,12 +105,10 @@ intervalName = \case
   LongBreak  -> "Long break"
   ShortBreak -> "Short break"
 
-
 syncUi :: App -> IO ()
 syncUi app =
   do syncUiTimer    (app^.ui) (app^.tomato)
      syncUiSettings (app^.ui) (app^.tomato)
-
 
 syncUiTimer :: Ui -> Tomato -> IO ()
 syncUiTimer u tom =
@@ -130,7 +118,6 @@ syncUiTimer u tom =
      G.set (u^.timerMinutesAdjustment) [ adjustmentValue := (minutes . toMinutes $ tomatoSeconds tom)
                                        , adjustmentUpper := (minutes $ tomatoTimeLimit tom)]
  where secs_per_min = 1 / 60
-
 
 syncUiSettings :: Ui -> Tomato -> IO ()
 syncUiSettings u tom =
@@ -149,7 +136,6 @@ syncUiSettings u tom =
        max_int_mins = 120
        min_iter_mins = 0
        max_iter_mins = 20
-
 
 main :: IO ()
 main =
@@ -224,7 +210,6 @@ main =
      S.quit
      killFRP
 
-
 adjustTomatoTime :: Double -> App -> IO App
 adjustTomatoTime mins app =
   do S.pauseMusic
@@ -232,54 +217,37 @@ adjustTomatoTime mins app =
          tom = set timer tmr (app^.tomato)
      return $ set tomato tom app
 
-
 adjustSettingsIterations :: Double -> App -> IO App
 adjustSettingsIterations iter app = return $ app
   { _tomato = set iterations (round iter) (app^.tomato) }
 
-
 adjustSettingsVolume :: Double -> App -> IO App
 adjustSettingsVolume n app =
   do S.setMusicVolume (round n)
-     -- G.set (ui^.settingsVolumeAdjustment) [ adjustmentValue := 100 ]
      return app
 
-
--- adjustSettings ::  ((Double -> Identity Double) -> Tomato -> Identity Tomato) -> Interval ->
---                   Double -> Tomato -> IO Tomato
 adjustSettings f g int n app =
   let tom' = set f (g n) (app^.tomato)
       app' = set tomato tom' app
   in return app'
-
-
-{-
-  let tom' = set f (g n) (app^.tomato)
-      app' = set tomato tom' app
-  in if (tom'^.interval) /= int
-        then return app'
-        else do S.pauseMusic
-                return $ case (tom'^.timer) of
-                  Running s _ -> app' { _tomato = set timer (Paused s) tom' }
-                  _           -> app'
--}
-
 
 adjustFinalMinute :: Bool -> App -> IO App
 adjustFinalMinute checked app =
   do toggleButtonSetMode (app^.ui^.settingsFinalMinuteCheckButton) checked
      return $ set finalMinute checked app
 
-
 adjustFiveMinutes :: Bool -> App -> IO App
 adjustFiveMinutes checked app =
   do toggleButtonSetMode (app^.ui^.settingsFiveMinutesCheckButton) checked
      return $ set fiveMinutes checked app
 
-
-updateMVar :: MVar a -> (a -> IO a) -> IO a
-updateMVar m f = modifyMVar m (\x -> f x >>= (return . (id &&& id)))
-
+nudgeTimer :: App -> IO App
+nudgeTimer app =
+  do tom' <- nudgeTomatoTimer (app^.tomato)
+     let (t0,t1) = (app^.tomato^.timer, tom'^.timer)
+     when (stopTickTock t0 t1 || stopRing t0 t1) $ S.pauseMusic
+     when (startTickTock t0 t1) $ S.playMusic (app^.audioRes^.tickTockMusic) (-1)
+     return (set tomato tom' app)
 
 stepper :: MVar App -> IO ()
 stepper mapp =
@@ -307,28 +275,14 @@ stepper mapp =
           return $ set tomato tom app
      threadDelay 100000
 
-
 easyNote :: String -> String -> N.Note
 easyNote title content = N.blankNote { N.summary = title, N.body = Just (N.Text content) }
-
 
 notify_ :: N.Client -> N.Note -> IO ()
 notify_ client note = void (N.notify client note)
 
+--
 
 io :: MonadIO m => IO a -> m a
 io = liftIO
-
-
---
-
-
-nudgeTimer :: App -> IO App
-nudgeTimer app =
-  do tom' <- nudgeTomatoTimer (app^.tomato)
-     let (t0,t1) = (app^.tomato^.timer, tom'^.timer)
-     when (stopTickTock t0 t1 || stopRing t0 t1) $ S.pauseMusic
-     when (startTickTock t0 t1) $ S.playMusic (app^.audioRes^.tickTockMusic) (-1)
-     return (set tomato tom' app)
-
 
