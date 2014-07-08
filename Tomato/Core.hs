@@ -99,11 +99,8 @@ tomatoNudgeTimer cur_time =
                            LongBreak  -> do iteration .= 0
                                             interval .= Pomodoro
 
-stepTomato :: Tomato -> IO Tomato
-stepTomato tom =
-  do let time_limit = tomatoTimeLimit tom
-     cur_time <- getCurrentTime
-     return $ execState (tomatoStep cur_time) tom
+stepTomato :: Tomato -> UTCTime -> Tomato
+stepTomato tom cur_time = execState (tomatoStep cur_time) tom
 
 tomatoTimeLimit :: Tomato -> Minutes
 tomatoTimeLimit tom =
@@ -112,10 +109,8 @@ tomatoTimeLimit tom =
     ShortBreak -> shortBreak
     LongBreak  -> longBreak)
 
-nudgeTomatoTimer :: Tomato -> IO Tomato
-nudgeTomatoTimer tom =
-  do cur_time <- getCurrentTime
-     return $ execState (tomatoNudgeTimer cur_time) tom
+nudgeTomatoTimer :: Tomato -> UTCTime -> Tomato
+nudgeTomatoTimer tom cur_time = execState (tomatoNudgeTimer cur_time) tom
 
 nudger :: Tomato -> Nudger
 nudger tom = case (tom^.timer) of

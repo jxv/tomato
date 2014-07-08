@@ -11,6 +11,7 @@ import Control.Applicative
 import Control.Arrow
 import Control.Concurrent
 import Data.Function
+import Data.Time.Clock
 import FRP.Sodium
 import Control.Lens 
 import qualified DBus.Notify as N
@@ -205,10 +206,13 @@ main =
      void $ idleAdd (do stepper mapp
                         return True)
                     priorityDefaultIdle
+     --
      mainGUI
      S.closeAudio
      S.quit
      killFRP
+
+--
 
 adjustTomatoTime :: Double -> App -> IO App
 adjustTomatoTime mins app =
@@ -243,16 +247,20 @@ adjustFiveMinutes checked app =
 
 nudgeTimer :: App -> IO App
 nudgeTimer app =
-  do tom' <- nudgeTomatoTimer (app^.tomato)
-     let (t0,t1) = (app^.tomato^.timer, tom'^.timer)
+  do cur_time <- getCurrentTime
+     let tom' = nudgeTomatoTimer (app^.tomato) cur_time
+         (t0,t1) = (app^.tomato^.timer, tom'^.timer)
      when (stopTickTock t0 t1 || stopRing t0 t1) $ S.pauseMusic
      when (startTickTock t0 t1) $ S.playMusic (app^.audioRes^.tickTockMusic) (-1)
      return (set tomato tom' app)
 
+--
+
 stepper :: MVar App -> IO ()
 stepper mapp =
   do modifyMVar_ mapp $ \app ->
-       do tom <- stepTomato (app^.tomato)
+       do cur_time <- getCurrentTime
+          let tom = stepTomato (app^.tomato) cur_time
           when (startRing (app^.tomato^.timer) (tom^.timer))
                (S.playMusic (app^.audioRes^.ringMusic) 0)
           syncUiTimer (app^.ui) tom
@@ -274,6 +282,8 @@ stepper mapp =
           --
           return $ set tomato tom app
      threadDelay 100000
+
+--
 
 easyNote :: String -> String -> N.Note
 easyNote title content = N.blankNote { N.summary = title, N.body = Just (N.Text content) }
