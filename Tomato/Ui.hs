@@ -8,9 +8,7 @@ module Tomato.Ui where
 import Control.Monad
 import Control.Monad.State
 import Control.Applicative
-import Control.Arrow
 import Control.Concurrent
-import Data.Function
 import Data.Time.Clock
 import FRP.Sodium
 import Control.Lens 
@@ -106,6 +104,9 @@ intervalName = \case
   LongBreak  -> "Long break"
   ShortBreak -> "Short break"
 
+nudgerName :: Nudger -> String
+nudgerName = show
+
 syncUi :: App -> IO ()
 syncUi app =
   do syncUiTimer    (app^.ui) (app^.tomato)
@@ -115,7 +116,7 @@ syncUiTimer :: Ui -> Tomato -> IO ()
 syncUiTimer u tom =
   do G.set (u^.timerIntervalLabel)     [ labelText := intervalName (tom^.interval) ]
      G.set (u^.timerCompletedLabel)    [ labelText := ("Completed " ++ (show $ tom^.completed)) ]
-     G.set (u^.timerNudgeButton)       [ buttonLabel := (show $ nudger tom) ]
+     G.set (u^.timerNudgeButton)       [ buttonLabel := nudgerName (nudger tom) ]
      G.set (u^.timerMinutesAdjustment) [ adjustmentValue := (minutes . toMinutes $ tomatoSeconds tom)
                                        , adjustmentUpper := (minutes $ tomatoTimeLimit tom)]
  where secs_per_min = 1 / 60
@@ -162,6 +163,7 @@ main =
            , app^.frp^.settingsVolumeEvent
            , app^.frp^.settingsFiveMinutesEvent
            , app^.frp^.settingsFinalMinuteEvent ]
+     --
      killFRP <- sync $ listen (foldr1 merge evts) (modifyMVar_ mapp)
      --
      void $ G.on (app^.ui^.timerMinutesScale)
