@@ -278,12 +278,16 @@ stepper mapp =
               five_mins_left = app^.fiveMinutes && startingEveryNthMinutes 5 secs secs' && not is_finished
               is_finished = app^.tomato^.timer /= Finished && tom^.timer == Finished
               was_finished = app^.tomato^.timer == Finished && tom^.timer /= Finished
+              was_not_started = case app^.tomato^.timer of -- This is diffferent due to how `timer` is nudged when started.
+                                  Running 0 _ -> True
+                                  _           -> False
           --
-          when final_min_left (notify_ cln $ easyNote int_name "1 minute left")
-          when five_mins_left (notify_ cln $ easyNote int_name (show mins_left ++ " minutes left"))
-          when is_finished  (notify_ cln $ easyNote int_name "Finished")
+          when final_min_left  (notify_ cln $ easyNote int_name "1 minute left")
+          when five_mins_left  (notify_ cln $ easyNote int_name (show mins_left ++ " minutes left"))
+          when is_finished     (notify_ cln $ easyNote int_name "Finished")
+          when was_not_started (notify_ cln $ easyNote int_name "Started")
           --
-          when is_finished (G.set (app^.ui^.window) [windowUrgencyHint := True])
+          when is_finished  (G.set (app^.ui^.window) [windowUrgencyHint := True])
           when was_finished (G.set (app^.ui^.window) [windowUrgencyHint := False])
           --
           return $ set tomato tom app
