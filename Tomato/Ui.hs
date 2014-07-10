@@ -274,13 +274,17 @@ stepper mapp =
               cln = app^.ui^.notifierClient
               mins_left = round time_limit - (floor $ toMinutes secs')
           --
-          let final_min_notif = app^.finalMinute && startingLastMinute time_limit secs secs'
-              five_mins_notif = app^.fiveMinutes && startingEveryNthMinutes 5 secs secs' && not finished_notif
-              finished_notif  = app^.tomato^.timer /= Finished && tom^.timer == Finished
+          let final_min_left = app^.finalMinute && startingLastMinute time_limit secs secs'
+              five_mins_left = app^.fiveMinutes && startingEveryNthMinutes 5 secs secs' && not is_finished
+              is_finished = app^.tomato^.timer /= Finished && tom^.timer == Finished
+              was_finished = app^.tomato^.timer == Finished && tom^.timer /= Finished
           --
-          when final_min_notif (notify_ cln $ easyNote int_name "1 minute left")
-          when five_mins_notif (notify_ cln $ easyNote int_name (show mins_left ++ " minutes left"))
-          when finished_notif  (notify_ cln $ easyNote int_name "Finished")
+          when final_min_left (notify_ cln $ easyNote int_name "1 minute left")
+          when five_mins_left (notify_ cln $ easyNote int_name (show mins_left ++ " minutes left"))
+          when is_finished  (notify_ cln $ easyNote int_name "Finished")
+          --
+          when is_finished (G.set (app^.ui^.window) [windowUrgencyHint := True])
+          when was_finished (G.set (app^.ui^.window) [windowUrgencyHint := False])
           --
           return $ set tomato tom app
      threadDelay 100000

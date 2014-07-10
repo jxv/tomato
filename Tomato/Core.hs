@@ -104,7 +104,7 @@ stepTomato tom cur_time = execState (tomatoStep cur_time) tom
 
 tomatoTimeLimit :: Tomato -> Minutes
 tomatoTimeLimit tom =
-  tom^.(case (tom^.interval) of
+  tom^.(case tom^.interval of
     Pomodoro   -> pomodoro
     ShortBreak -> shortBreak
     LongBreak  -> longBreak)
