@@ -26,8 +26,8 @@ executable tomato
   main-is:             Main.hs
   other-modules:       Paths_tomato
   -- other-extensions:    TemplateHaskell, NamedFieldPuns, RecordWildCards, MultiWayIf
-  build-depends:       base >=4.6 && <4.7,
-                       mtl >=2.1 && <2.2,
+  build-depends:       base >=4.6 && <4.8,
+                       mtl >=2.1 && <2.3,
                        time >=1.4 && <1.5,
                        lens >=4.2 && <4.3,
                        sodium >=0.10 && <0.11,
